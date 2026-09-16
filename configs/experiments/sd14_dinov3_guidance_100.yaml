@@ -1,0 +1,15 @@
+model_path: /mnt/e/repos/stable-diffusion-v1-4
+critic_type: dinov3_original_mlp
+critic_checkpoint: /mnt/e/repos/GGGT/checkpoints_dinov3_sd14_mlp_original_vs_fixed_clip_filter/checkpoint_final.pt
+dinov3_backbone: /mnt/e/repos/GGGT/pretrained_weight/dinov3-l16
+dinov3_implementation: /mnt/e/repos/GGGT/models/dinov3_vit.py
+output: outputs/sd14_dinov3_guidance_100
+prompt: a realistic photo
+resolution: 512
+ddim_steps: 35
+cfg_scale: 7.5
+precision: bf16
+max_guidance_timestep: 200
+gradient_rms_clip: 0.1
+strengths: [0.0, 8.0, 15.0, 20.0]
+seeds: [22001, 22002, 22003, 22004, 22005, 22006, 22007, 22008, 22009, 22010, 22011, 22012, 22013, 22014, 22015, 22016, 22017, 22018, 22019, 22020, 22021, 22022, 22023, 22024, 22025, 22026, 22027, 22028, 22029, 22030, 22031, 22032, 22033, 22034, 22035, 22036, 22037, 22038, 22039, 22040, 22041, 22042, 22043, 22044, 22045, 22046, 22047, 22048, 22049, 22050, 22051, 22052, 22053, 22054, 22055, 22056, 22057, 22058, 22059, 22060, 22061, 22062, 22063, 22064, 22065, 22066, 22067, 22068, 22069, 22070, 22071, 22072, 22073, 22074, 22075, 22076, 22077, 22078, 22079, 22080, 22081, 22082, 22083, 22084, 22085, 22086, 22087, 22088, 22089, 22090, 22091, 22092, 22093, 22094, 22095, 22096, 22097, 22098, 22099, 22100]

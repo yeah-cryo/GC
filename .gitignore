@@ -1,0 +1,35 @@
+# Experiment artifacts and local data
+/outputs/
+/logs/
+/models/
+/data/
+/datasets/
+/checkpoints/
+
+# Model weights and generated binary artifacts
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.bin
+*.log
+
+# Python and uv environments
+.venv/
+.uv-cache/
+.pytest_cache/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Local agent/session state; session transcripts may contain credentials
+.agents/
+.codex/
+codex_session_*.jsonl
+
+# Editor and operating-system files
+.DS_Store
+.idea/
+.vscode/

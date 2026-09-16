@@ -1,0 +1,13 @@
+model_path: /mnt/e/repos/stable-diffusion-v1-4
+critic_checkpoint: /mnt/e/repos/real_reference/outputs/resnet50_critic/best.pt
+output: outputs/sd14_resnet50_guidance_coco20k
+prompt_manifest: outputs/coco2014_prompts/first_20000.jsonl
+resolution: 512
+ddim_steps: 35
+cfg_scale: 7.5
+precision: bf16
+max_guidance_timestep: 200
+gradient_rms_clip: 0.1
+strengths: [20.0]
+seed_start: 0
+num_images: 20000

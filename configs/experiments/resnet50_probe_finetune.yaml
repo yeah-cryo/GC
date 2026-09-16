@@ -1,0 +1,28 @@
+source_checkpoint: outputs/resnet50_critic/best.pt
+pretrain_root: /mnt/f/datasets/GenImage/stable_diffusion_v_1_4/imagenet_ai_0419_sdv4
+pretrain_manifest: outputs/resnet50_critic/manifests/train.jsonl
+validation_manifest: outputs/resnet50_critic/manifests/validation.jsonl
+generated_root: outputs/sd14_resnet50_guidance_coco20k
+generated_metrics: outputs/sd14_resnet50_guidance_coco20k/metrics.jsonl
+coco_images_root: /mnt/f/datasets/coco2014/images/train2014
+probe_fake_images: 20000
+output: outputs/resnet50_critic_probe_guided_s20
+seed: 42
+crop_size: 224
+pretrain_batch_size: 64
+probe_batch_size: 64
+validation_batch_size: 64
+workers_per_loader: 4
+max_epochs: 20
+learning_rate: 0.00001
+weight_decay: 0.00001
+betas: [0.9, 0.999]
+epsilon: 0.00000001
+precision: bf16
+probe_loss_weight: 0.5
+improvement_delta: 0.0001
+patience: 3
+log_every_steps: 50
+swanlab:
+  project: aigi-detection
+  experiment_name: resnet50-probe-guided-s20
