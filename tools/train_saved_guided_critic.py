@@ -123,6 +123,17 @@ def main():
     order_text = json.dumps(order_payload, separators=(',', ':')) + '\n'
     order_hash = hashlib.sha256(order_text.encode()).hexdigest()
 
+    initial_checkpoint_path = None
+    initial_checkpoint_identity = None
+    if config.get('initial_checkpoint'):
+        initial_checkpoint_path = Path(config['initial_checkpoint'])
+        if not initial_checkpoint_path.is_file():
+            raise FileNotFoundError(f'initial_checkpoint is missing: {initial_checkpoint_path}')
+        initial_checkpoint_identity = {
+            'path': str(initial_checkpoint_path.resolve()),
+            'sha256': file_sha256(initial_checkpoint_path),
+        }
+
     data_identity = {
         'prompt_manifest': str(prompt_source.resolve()),
         'prompt_manifest_sha256': file_sha256(prompt_source),
@@ -132,6 +143,7 @@ def main():
         'records': config['num_images'], 'unique_image_ids': len(set(image_ids)),
         'sampling_order': sampling_order, 'sampling_seed': sampling_seed,
         'sample_order_sha256': order_hash,
+        'initial_checkpoint': initial_checkpoint_identity,
     }
     prompt_snapshot = output / 'prompts.jsonl'
     generation_snapshot = output / 'source_generation_metrics.jsonl'
@@ -149,9 +161,21 @@ def main():
             raise ValueError('Resume configuration or data identity differs.')
         if checkpoint['label_mapping'] != LABELS:
             raise ValueError('Resume label mapping differs.')
-    model = build_critic(None if checkpoint else config['pretrained']).to(device)
+    initial_checkpoint = None
+    if not checkpoint and initial_checkpoint_path is not None:
+        initial_checkpoint = torch.load(initial_checkpoint_path, map_location='cpu', weights_only=False)
+        if initial_checkpoint.get('label_mapping') != LABELS:
+            raise ValueError('Initial checkpoint label mapping differs.')
+        if initial_checkpoint.get('architecture', 'resnet50') != 'resnet50':
+            raise ValueError('Initial checkpoint is not a ResNet-50 critic.')
+        if 'model' not in initial_checkpoint:
+            raise ValueError('Initial checkpoint has no model state.')
+    model = build_critic(
+        None if checkpoint or initial_checkpoint else config['pretrained']).to(device)
     if checkpoint:
         model.load_state_dict(checkpoint['model'], strict=True)
+    elif initial_checkpoint:
+        model.load_state_dict(initial_checkpoint['model'], strict=True)
     optimizer = torch.optim.AdamW(model.parameters(), lr=config['learning_rate'],
                                   weight_decay=config['weight_decay'], betas=tuple(config['betas']),
                                   eps=config['epsilon'])
@@ -166,7 +190,7 @@ def main():
         optimizer_steps = int(checkpoint['optimizer_steps'])
         history = checkpoint.get('history', [])
         restore_rng(checkpoint['rng_state'])
-    del checkpoint
+    del checkpoint, initial_checkpoint
 
     metrics_path = output / 'metrics.jsonl'
     metrics_path.write_text(''.join(json.dumps(row) + '\n' for row in history), encoding='utf-8')

@@ -279,6 +279,27 @@ Resume from the last completed shuffled block:
 bash scripts/train_saved_guided_shuffled.sh --resume
 ```
 
+### Continue the online-guided critic on shuffled saved pairs
+
+Purpose: initialize from the completed online-guided critic, then fine-tune it once more
+on a deterministic random permutation of the same 20,000 retained real/generated pairs.
+The optimizer is reset and its learning rate follows cosine decay from `1e-4` to `1e-6`
+over 313 steps. The source checkpoint path and SHA-256 identity are recorded with the run.
+
+Wrapper: `scripts/train_online_then_saved_guided_shuffled.sh`
+
+Config: `configs/experiments/resnet50_online_then_saved_guided_cosine_shuffled_coco20k.yaml`
+
+```bash
+bash scripts/train_online_then_saved_guided_shuffled.sh
+```
+
+Resume from the last completed shuffled block:
+
+```bash
+bash scripts/train_online_then_saved_guided_shuffled.sh --resume
+```
+
 ### Train on original data plus 20,000 guided fakes and paired COCO reals
 
 Purpose: initialize from the selected baseline critic and fine-tune the full ResNet-50. Every update combines a 64-image batch from the original SD1.4 training data and a 64-image batch from the 40,000-record PROBE set, using `0.5 × original BCE + 0.5 × PROBE BCE`.
