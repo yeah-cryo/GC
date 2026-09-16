@@ -44,7 +44,10 @@ def main():
     with open(args.checkpoint, 'rb') as handle:
         digest = hashlib.file_digest(handle, 'sha256').hexdigest()
     metadata = {'checkpoint': str(Path(args.checkpoint).resolve()), 'checkpoint_sha256': digest,
-                'epoch': checkpoint['epoch'], 'label_mapping': LABELS, 'split': 'official_val',
+                'epoch': checkpoint.get('epoch'),
+                'completed_samples': checkpoint.get('completed_samples'),
+                'optimizer_steps': checkpoint.get('optimizer_steps'),
+                'label_mapping': LABELS, 'split': 'official_val',
                 'protocol': 'fake JPEG quality 96; zero padding; five 224 crops; ImageNet normalization; mean logits >= 0',
                 'precision': 'bf16', 'expected_generators': list(GENERATORS)}
     write_json(metadata, output / 'configuration.json')

@@ -33,7 +33,9 @@ def main():
                            corruption_policy='skip', error_log=output.with_suffix('.corrupt.jsonl'))
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.workers,
                         pin_memory=device.type == 'cuda', worker_init_fn=seed_worker, collate_fn=collate_readable)
-    result = {'checkpoint': str(Path(args.checkpoint).resolve()), 'epoch': checkpoint['epoch'],
+    result = {'checkpoint': str(Path(args.checkpoint).resolve()), 'epoch': checkpoint.get('epoch'),
+              'completed_samples': checkpoint.get('completed_samples'),
+              'optimizer_steps': checkpoint.get('optimizer_steps'),
               'data_root': str(Path(args.data_root).resolve()), 'split': 'official_val', 'label_mapping': LABELS,
               **validate(model, loader, device, use_bf16=device.type == 'cuda')}
     output = Path(args.output) if args.output else Path(args.checkpoint).parent / 'official_val_metrics.json'
