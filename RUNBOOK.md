@@ -259,6 +259,26 @@ Resume from the last completed pair block:
 bash scripts/train_saved_guided_critic.sh --resume
 ```
 
+### Random-order ablation for the saved online-guided set
+
+Purpose: repeat the saved-data cosine experiment with one deterministic random
+permutation of all 20,000 pair indices. Sampling is without replacement, each pair is
+seen exactly once, and every setting other than pair order remains unchanged.
+
+Wrapper: `scripts/train_saved_guided_shuffled.sh`
+
+Config: `configs/experiments/resnet50_saved_guided_cosine_shuffled_coco20k.yaml`
+
+```bash
+bash scripts/train_saved_guided_shuffled.sh
+```
+
+Resume from the last completed shuffled block:
+
+```bash
+bash scripts/train_saved_guided_shuffled.sh --resume
+```
+
 ### Train on original data plus 20,000 guided fakes and paired COCO reals
 
 Purpose: initialize from the selected baseline critic and fine-tune the full ResNet-50. Every update combines a 64-image batch from the original SD1.4 training data and a 64-image batch from the 40,000-record PROBE set, using `0.5 × original BCE + 0.5 × PROBE BCE`.

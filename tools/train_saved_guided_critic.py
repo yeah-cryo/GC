@@ -72,6 +72,9 @@ def main():
         raise ValueError('Batch sizes must be positive.')
     if not 0 <= config['minimum_learning_rate'] < config['learning_rate']:
         raise ValueError('minimum_learning_rate must be in [0, learning_rate).')
+    sampling_order = config.get('sampling_order', 'sequential')
+    if sampling_order not in ('sequential', 'random_permutation'):
+        raise ValueError('sampling_order must be sequential or random_permutation.')
 
     seed_everything(config['seed'])
     torch.set_num_threads(2)
@@ -108,6 +111,18 @@ def main():
             config['generated_images_root'], config['num_images'] - 1).is_file():
         raise FileNotFoundError('The saved generated-image sequence is incomplete at an endpoint.')
 
+    if sampling_order == 'sequential':
+        sample_indices = expected_indices
+        sampling_seed = None
+    else:
+        sampling_seed = int(config['sampling_seed'])
+        order_generator = torch.Generator().manual_seed(sampling_seed)
+        sample_indices = torch.randperm(config['num_images'], generator=order_generator).tolist()
+    order_payload = {'sampling_order': sampling_order, 'sampling_seed': sampling_seed,
+                     'indices': sample_indices}
+    order_text = json.dumps(order_payload, separators=(',', ':')) + '\n'
+    order_hash = hashlib.sha256(order_text.encode()).hexdigest()
+
     data_identity = {
         'prompt_manifest': str(prompt_source.resolve()),
         'prompt_manifest_sha256': file_sha256(prompt_source),
@@ -115,7 +130,8 @@ def main():
         'generation_metrics_sha256': file_sha256(generation_source),
         'generated_images_root': str(Path(config['generated_images_root']).resolve()),
         'records': config['num_images'], 'unique_image_ids': len(set(image_ids)),
-        'order': 'ascending prompt_index in consecutive pair_batch_size blocks',
+        'sampling_order': sampling_order, 'sampling_seed': sampling_seed,
+        'sample_order_sha256': order_hash,
     }
     prompt_snapshot = output / 'prompts.jsonl'
     generation_snapshot = output / 'source_generation_metrics.jsonl'
@@ -156,6 +172,10 @@ def main():
     metrics_path.write_text(''.join(json.dumps(row) + '\n' for row in history), encoding='utf-8')
     (output / 'configuration.yaml').write_text(yaml.safe_dump(config, sort_keys=False))
     write_json(data_identity, output / 'data_identity.json')
+    order_path = output / 'sample_order.json'
+    if order_path.exists() and order_path.read_text(encoding='utf-8') != order_text:
+        raise ValueError('Saved sample order differs from the reconstructed order.')
+    order_path.write_text(order_text, encoding='utf-8')
     write_json({'torch': str(torch.__version__), 'cuda': torch.version.cuda,
                 'packages': {name: version(name) for name in ('torchvision', 'numpy', 'Pillow',
                                                                'PyYAML', 'swanlab')},
@@ -187,8 +207,9 @@ def main():
     while completed < total:
         block_start = completed
         block_end = min(total, block_start + config['pair_batch_size'])
+        block_indices = sample_indices[block_start:block_end]
         real_images, fake_images = [], []
-        for index in range(block_start, block_end):
+        for index in block_indices:
             record = prompt_records[index]
             real_images.append(load_augmented(real_path(config['coco_images_root'], record['image_id']),
                                               transform, 0))
@@ -222,6 +243,8 @@ def main():
         row = {
             'optimizer_step': optimizer_steps, 'completed_samples': completed,
             'block_start': block_start, 'block_end': block_end,
+            'first_sample_index': block_indices[0],
+            'last_sample_index': block_indices[-1],
             'train_loss': train_loss / (2 * pair_count),
             'train_real_accuracy': real_correct / pair_count,
             'train_fake_accuracy': fake_correct / pair_count,
