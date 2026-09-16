@@ -235,6 +235,30 @@ bash scripts/train_online_guided_critic.sh \
 
 For a bounded smoke run, add `--max-samples 64` and use a separate output path.
 
+### Train on the saved online-guided set with cosine learning-rate decay
+
+Purpose: initialize a fresh ImageNet-pretrained ResNet-50 and train it once over the
+20,000 real/generated pairs retained by the online experiment. It preserves ascending
+prompt-index order and the same 64-real/64-fake block construction, augmentation,
+BF16 microbatching, and AdamW settings. Unlike the online run, it uses the already saved
+fakes and decays the learning rate from `1e-4` to `1e-6` over 313 optimizer steps.
+
+Wrapper: `scripts/train_saved_guided_critic.sh`
+
+Entry point: `tools/train_saved_guided_critic.py`
+
+Config: `configs/experiments/resnet50_saved_guided_cosine_coco20k.yaml`
+
+```bash
+bash scripts/train_saved_guided_critic.sh
+```
+
+Resume from the last completed pair block:
+
+```bash
+bash scripts/train_saved_guided_critic.sh --resume
+```
+
 ### Train on original data plus 20,000 guided fakes and paired COCO reals
 
 Purpose: initialize from the selected baseline critic and fine-tune the full ResNet-50. Every update combines a 64-image batch from the original SD1.4 training data and a 64-image batch from the 40,000-record PROBE set, using `0.5 × original BCE + 0.5 × PROBE BCE`.
