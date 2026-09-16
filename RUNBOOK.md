@@ -262,6 +262,27 @@ bash scripts/train_online_guided_replay.sh --resume
 Replay is optional. Omit the `replay` mapping or set `replay.enabled: false` to retain
 the original online-training behavior.
 
+### Online hard-negative training on 40,000 unique COCO images
+
+Purpose: initialize a fresh ImageNet-pretrained ResNet-50 and train it on 40,000
+unique COCO real images with one caption per image and 40,000 online-generated hard
+fakes. Replay is disabled. AdamW learning rate follows cosine decay from `1e-4` to
+`1e-6` over 625 optimizer steps.
+
+Wrapper: `scripts/train_online_guided_cosine_coco40k.sh`
+
+Config: `configs/experiments/resnet50_online_guided_cosine_coco40k.yaml`
+
+```bash
+bash scripts/train_online_guided_cosine_coco40k.sh
+```
+
+Resume from the last completed block:
+
+```bash
+bash scripts/train_online_guided_cosine_coco40k.sh --resume
+```
+
 ### Train on the saved online-guided set with cosine learning-rate decay
 
 Purpose: initialize a fresh ImageNet-pretrained ResNet-50 and train it once over the

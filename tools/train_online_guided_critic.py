@@ -1,6 +1,7 @@
 import argparse
 import hashlib
 import json
+import math
 import os
 import shutil
 import time
@@ -61,9 +62,11 @@ def write_generation_rows(path, rows):
     os.replace(temporary, path)
 
 
-def save_state(path, model, optimizer, completed, steps, config, manifest_hash, history, replay):
+def save_state(path, model, optimizer, scheduler, completed, steps, config, manifest_hash,
+               history, replay):
     state = {
         'model': model.state_dict(), 'optimizer': optimizer.state_dict(),
+        'scheduler': scheduler.state_dict() if scheduler else None,
         'completed_samples': completed, 'optimizer_steps': steps,
         'configuration': config, 'label_mapping': LABELS,
         'prompt_manifest_sha256': manifest_hash, 'rng_state': rng_state(),
@@ -92,6 +95,13 @@ def main():
         raise ValueError('Batch sizes must be positive.')
     if config['guidance_strength'] < 0 or config['warmup_images'] < 0 or config['guidance_ramp_images'] < 0:
         raise ValueError('Guidance schedule values must be nonnegative.')
+    scheduler_name = config.get('scheduler', 'constant')
+    if scheduler_name not in ('constant', 'cosine'):
+        raise ValueError('scheduler must be constant or cosine.')
+    if scheduler_name == 'cosine':
+        minimum_lr = float(config['minimum_learning_rate'])
+        if not 0 <= minimum_lr < config['learning_rate']:
+            raise ValueError('minimum_learning_rate must be in [0, learning_rate).')
 
     seed_everything(config['seed'])
     torch.set_num_threads(2)
@@ -144,9 +154,17 @@ def main():
     optimizer = torch.optim.AdamW(model.parameters(), lr=config['learning_rate'],
                                   weight_decay=config['weight_decay'], betas=tuple(config['betas']),
                                   eps=config['epsilon'])
+    total_steps = math.ceil(config['num_images'] / config['pair_batch_size'])
+    scheduler = (torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, T_max=total_steps, eta_min=config['minimum_learning_rate'])
+        if scheduler_name == 'cosine' else None)
     completed, optimizer_steps, history = 0, 0, []
     if checkpoint:
         optimizer.load_state_dict(checkpoint['optimizer'])
+        if scheduler:
+            if checkpoint.get('scheduler') is None:
+                raise ValueError('Cosine scheduling is enabled but the checkpoint has no scheduler state.')
+            scheduler.load_state_dict(checkpoint['scheduler'])
         completed = int(checkpoint['completed_samples'])
         optimizer_steps = int(checkpoint['optimizer_steps'])
         history = checkpoint.get('history', [])
@@ -174,7 +192,7 @@ def main():
                 'selection': 'first caption annotation per unique COCO image ID'},
                output / 'manifest_identity.json')
     if not latest_path.exists():
-        save_state(latest_path, model, optimizer, completed, optimizer_steps,
+        save_state(latest_path, model, optimizer, scheduler, completed, optimizer_steps,
                    config, manifest_hash, history, replay)
 
     tracker = None
@@ -266,6 +284,7 @@ def main():
         order = torch.randperm(len(labels))
         images, labels, groups, weights = (value[order] for value in (images, labels, groups, weights))
         optimizer.zero_grad(set_to_none=True)
+        learning_rate = optimizer.param_groups[0]['lr']
         train_loss = 0.0
         group_loss = [0.0, 0.0]
         group_real_correct = [0, 0]
@@ -294,6 +313,8 @@ def main():
         else:
             gradient_norm = None
         optimizer.step()
+        if scheduler:
+            scheduler.step()
         optimizer_steps += 1
         completed = block_end
         pair_count = block_end - block_start
@@ -316,10 +337,12 @@ def main():
             'mean_preupdate_fake_probability': sum(x['preupdate_fake_probability'] for x in block_generation) / pair_count,
             'mean_strength': sum(x['strength'] for x in block_generation) / pair_count,
             'gradient_norm': gradient_norm, 'elapsed_seconds': time.monotonic() - started,
+            'learning_rate': learning_rate,
+            'next_learning_rate': optimizer.param_groups[0]['lr'],
         }
         history.append(row)
         write_generation_rows(generation_path, generation_rows)
-        save_state(latest_path, model, optimizer, completed, optimizer_steps,
+        save_state(latest_path, model, optimizer, scheduler, completed, optimizer_steps,
                    config, manifest_hash, history, replay)
         with metrics_path.open('a', encoding='utf-8') as handle:
             handle.write(json.dumps(row) + '\n')
@@ -333,6 +356,7 @@ def main():
         shutil.copyfile(latest_path, output / 'final.pt.tmp')
         os.replace(output / 'final.pt.tmp', output / 'final.pt')
         write_json({'complete': True, 'samples': completed, 'optimizer_steps': optimizer_steps,
+                    'final_learning_rate': optimizer.param_groups[0]['lr'],
                     'checkpoint': str((output / 'final.pt').resolve())}, output / 'summary.json')
     else:
         print(f'Stopped at {completed}/{config["num_images"]} samples due to --max-samples.', flush=True)
