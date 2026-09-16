@@ -11,12 +11,15 @@ The selected epoch-2 baseline and the selected fine-tuned ResNet-50 critics were
 | ResNet-50 critic + PROBE fine-tuning | 99.73% | 52.10% | 49.92% | 72.33% | 54.80% | 60.33% | 99.69% | 96.51% | **73.18%** |
 | ResNet-50 critic + online guided training | 95.72% | 57.11% | 47.67% | 74.97% | 63.57% | 66.19% | 95.71% | 92.82% | **74.22%** |
 | ResNet-50 critic + saved guided data + cosine LR | 92.51% | 60.33% | 43.77% | 75.71% | 64.62% | 73.38% | 92.26% | 91.15% | **74.22%** |
+| ResNet-50 critic + shuffled saved guided data + cosine LR | 94.80% | 57.71% | 46.90% | 74.88% | 62.60% | 68.61% | 94.46% | 92.43% | **74.05%** |
 
 Adding the unguided SD1.4 control set improved average balanced accuracy by 0.64 percentage points across all eight generators and raised the unseen-generator macro average from 68.50% to 69.22%. The guided hard-sample model reached 73.18% overall and 69.38% on unseen generators, only 0.14 and 0.17 percentage points above the equal-size control. In this single run, most of the improvement therefore comes from adding matched training data, while detector-guided sampling provides a smaller incremental gain.
 
 The online-guided model was initialized from ImageNet ResNet-50 weights and trained only on 20,000 unique COCO real images paired with hard SD1.4 samples generated against the evolving detector. It reached 74.22% across all eight generators and 71.15% across the seven unseen generators. Relative to the baseline critic, this is a gain of 1.82 and 2.65 percentage points, respectively. The improvement is concentrated on ADM, Midjourney, VQDM, and GLIDE; SD-family accuracy decreased slightly, and BigGAN fake accuracy remained effectively zero. This indicates improved transfer to several diffusion-based domains but not a universal fake-image representation.
 
 Training a fresh ImageNet ResNet-50 on the retained online-generated set in the same sequential block order, while decaying the learning rate from `1e-4` to `1e-6`, produced 74.215% across all generators and 71.602% across unseen generators. Its overall balanced accuracy is effectively identical to online training (74.218%), with a 0.455-point unseen-generator gain. The cosine model predicts fake more often: macro fake accuracy increased from 52.98% to 60.48%, while macro real accuracy decreased from 95.46% to 87.95%. The result is therefore a threshold tradeoff rather than an unambiguous overall improvement.
+
+Randomly shuffling the same 20,000 retained training pairs before cosine-LR fine-tuning produced 74.048% across all generators and 71.083% across unseen generators. This is 0.168 and 0.519 percentage points below the sequential replay run, respectively. Shuffling shifted the operating point toward real predictions: macro real accuracy rose from 87.95% to 93.24%, while macro fake accuracy fell from 60.48% to 54.85%. The random order therefore did not improve balanced accuracy in this run.
 
 - [Machine-readable evaluation table](outputs/resnet50_critic/genimage_evaluation/summary.csv)
 - [Official SD 1.4 evaluation](outputs/resnet50_critic/genimage_evaluation/stable_diffusion_v_1_4.json)
@@ -29,6 +32,8 @@ Training a fresh ImageNet ResNet-50 on the retained online-generated set in the 
 - [Online-guided critic per-generator results](outputs/resnet50_online_guided_coco20k/genimage_evaluation/summary.json)
 - [Saved-data cosine critic combined results](outputs/resnet50_saved_guided_cosine_coco20k/genimage_evaluation/combined_summary.json)
 - [Saved-data cosine critic per-generator results](outputs/resnet50_saved_guided_cosine_coco20k/genimage_evaluation/summary.json)
+- [Shuffled saved-data cosine critic combined results](outputs/resnet50_saved_guided_cosine_shuffled_coco20k/genimage_evaluation/combined_summary.json)
+- [Shuffled saved-data cosine critic per-generator results](outputs/resnet50_saved_guided_cosine_shuffled_coco20k/genimage_evaluation/summary.json)
 
 ## ResNet-50 Classifier-Guidance Results
 
