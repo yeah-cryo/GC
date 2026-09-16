@@ -235,6 +235,33 @@ bash scripts/train_online_guided_critic.sh \
 
 For a bounded smoke run, add `--max-samples 64` and use a separate output path.
 
+### Online hard-negative training with reservoir replay
+
+Purpose: run the same online classifier-guidance experiment while replaying historical
+hard pairs. A private seeded reservoir retains up to 4,096 prior pair indices. Each
+update combines 64 current pairs with up to 64 replay pairs, and replay loss ramps from
+zero to a maximum weight of 0.5 as the reservoir fills. Buffer contents and its RNG state
+are stored in every checkpoint, so resuming reproduces the replay stream exactly.
+
+Wrapper: `scripts/train_online_guided_replay.sh`
+
+Entry point: `tools/train_online_guided_critic.py`
+
+Config: `configs/experiments/resnet50_online_guided_replay_coco20k.yaml`
+
+```bash
+bash scripts/train_online_guided_replay.sh
+```
+
+Resume from the last completed block:
+
+```bash
+bash scripts/train_online_guided_replay.sh --resume
+```
+
+Replay is optional. Omit the `replay` mapping or set `replay.enabled: false` to retain
+the original online-training behavior.
+
 ### Train on the saved online-guided set with cosine learning-rate decay
 
 Purpose: initialize a fresh ImageNet-pretrained ResNet-50 and train it once over the

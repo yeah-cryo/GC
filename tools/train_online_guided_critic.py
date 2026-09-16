@@ -22,6 +22,7 @@ from aigi_detection.models.backbones import build_critic
 from aigi_detection.models.modules.classifier_guidance import sample_guided
 from aigi_detection.models.modules.differentiable_sd import DifferentiableSD
 from aigi_detection.models.modules.soft_prompt import encode_plain
+from aigi_detection.training import build_replay
 
 
 LABELS = {'nature': 0, 'ai': 1}
@@ -60,12 +61,13 @@ def write_generation_rows(path, rows):
     os.replace(temporary, path)
 
 
-def save_state(path, model, optimizer, completed, steps, config, manifest_hash, history):
+def save_state(path, model, optimizer, completed, steps, config, manifest_hash, history, replay):
     state = {
         'model': model.state_dict(), 'optimizer': optimizer.state_dict(),
         'completed_samples': completed, 'optimizer_steps': steps,
         'configuration': config, 'label_mapping': LABELS,
         'prompt_manifest_sha256': manifest_hash, 'rng_state': rng_state(),
+        'replay': replay.state_dict() if replay else None,
         'metrics': history[-1] if history else None,
         'history': history, 'architecture': 'resnet50',
         'output_semantics': 'one logit; sigmoid = P(fake)',
@@ -129,6 +131,13 @@ def main():
             raise ValueError('Resume configuration or prompt manifest differs.')
         if checkpoint['label_mapping'] != LABELS:
             raise ValueError('Resume label mapping differs.')
+    replay = build_replay(config)
+    if checkpoint and replay:
+        if checkpoint.get('replay') is None:
+            raise ValueError('Replay is enabled but the checkpoint has no replay state.')
+        replay.load_state_dict(checkpoint['replay'])
+        if replay.seen != int(checkpoint['completed_samples']):
+            raise ValueError('Replay state does not match completed samples.')
     model = build_critic(None if checkpoint else config['pretrained']).to(device)
     if checkpoint:
         model.load_state_dict(checkpoint['model'], strict=True)
@@ -166,7 +175,7 @@ def main():
                output / 'manifest_identity.json')
     if not latest_path.exists():
         save_state(latest_path, model, optimizer, completed, optimizer_steps,
-                   config, manifest_hash, history)
+                   config, manifest_hash, history, replay)
 
     tracker = None
     if config.get('swanlab'):
@@ -226,33 +235,60 @@ def main():
                                                         'preupdate_fake_probability', 'generation_seconds')}),
                   flush=True)
 
-        # The SD graph is gone. Train the same detector on this balanced block.
+        # The SD graph is gone. Train the same detector on current and replayed pairs.
         model.requires_grad_(True).train()
-        real_images, fake_images = [], []
+        current_real, current_fake = [], []
         for index in range(block_start, block_end):
             record = prompt_records[index]
-            real_images.append(load_augmented(real_path(config['coco_images_root'], record['image_id']),
+            current_real.append(load_augmented(real_path(config['coco_images_root'], record['image_id']),
+                                               transform, 0))
+            current_fake.append(load_augmented(fake_dir / f'fake_{index:05d}.png', transform, 1))
+        replay_indices = replay.sample() if replay else []
+        replay_real, replay_fake = [], []
+        for index in replay_indices:
+            record = prompt_records[index]
+            replay_real.append(load_augmented(real_path(config['coco_images_root'], record['image_id']),
                                               transform, 0))
-            fake_images.append(load_augmented(fake_dir / f'fake_{index:05d}.png', transform, 1))
-        images = torch.stack(real_images + fake_images)
-        labels = torch.cat((torch.zeros(len(real_images)), torch.ones(len(fake_images))))
+            replay_fake.append(load_augmented(fake_dir / f'fake_{index:05d}.png', transform, 1))
+
+        current_pairs, replay_pairs = len(current_real), len(replay_real)
+        replay_weight = replay.weight if replay_pairs else 0.0
+        images = torch.stack(current_real + current_fake + replay_real + replay_fake)
+        labels = torch.cat((torch.zeros(current_pairs), torch.ones(current_pairs),
+                            torch.zeros(replay_pairs), torch.ones(replay_pairs)))
+        groups = torch.cat((torch.zeros(2 * current_pairs, dtype=torch.long),
+                            torch.ones(2 * replay_pairs, dtype=torch.long)))
+        weights = torch.cat((
+            torch.full((2 * current_pairs,), (1.0 - replay_weight) / (2 * current_pairs)),
+            torch.full((2 * replay_pairs,), replay_weight / (2 * replay_pairs))
+            if replay_pairs else torch.empty(0),
+        ))
         order = torch.randperm(len(labels))
-        images, labels = images[order], labels[order]
+        images, labels, groups, weights = (value[order] for value in (images, labels, groups, weights))
         optimizer.zero_grad(set_to_none=True)
-        train_loss, real_correct, fake_correct = 0.0, 0, 0
+        train_loss = 0.0
+        group_loss = [0.0, 0.0]
+        group_real_correct = [0, 0]
+        group_fake_correct = [0, 0]
         for offset in range(0, len(labels), config['micro_batch_size']):
             batch_images = images[offset:offset + config['micro_batch_size']].to(device, non_blocking=True)
             batch_labels = labels[offset:offset + config['micro_batch_size']].to(device, non_blocking=True)
+            batch_groups = groups[offset:offset + config['micro_batch_size']].to(device, non_blocking=True)
+            batch_weights = weights[offset:offset + config['micro_batch_size']].to(device, non_blocking=True)
             with torch.autocast('cuda', dtype=torch.bfloat16):
                 logits = model(batch_images).flatten()
-                loss_sum = F.binary_cross_entropy_with_logits(logits, batch_labels, reduction='sum')
-            (loss_sum / len(labels)).backward()
-            train_loss += loss_sum.detach().item()
+                losses = F.binary_cross_entropy_with_logits(logits, batch_labels, reduction='none')
+                weighted_loss = (losses * batch_weights).sum()
+            weighted_loss.backward()
+            train_loss += weighted_loss.detach().item()
             predicted = logits.detach() >= 0
             real = batch_labels == 0
             fake = ~real
-            real_correct += int(((~predicted) & real).sum())
-            fake_correct += int((predicted & fake).sum())
+            for group in (0, 1):
+                selected = batch_groups == group
+                group_loss[group] += losses.detach()[selected].sum().item()
+                group_real_correct[group] += int(((~predicted) & real & selected).sum())
+                group_fake_correct[group] += int((predicted & fake & selected).sum())
         if config.get('gradient_clip_norm'):
             gradient_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), config['gradient_clip_norm']).item()
         else:
@@ -261,12 +297,22 @@ def main():
         optimizer_steps += 1
         completed = block_end
         pair_count = block_end - block_start
+        if replay:
+            replay.add(range(block_start, block_end))
         row = {
             'optimizer_step': optimizer_steps, 'completed_samples': completed,
             'block_start': block_start, 'block_end': block_end,
-            'train_loss': train_loss / (2 * pair_count),
-            'train_real_accuracy': real_correct / pair_count,
-            'train_fake_accuracy': fake_correct / pair_count,
+            'train_loss': train_loss,
+            'train_current_loss': group_loss[0] / (2 * current_pairs),
+            'train_real_accuracy': group_real_correct[0] / current_pairs,
+            'train_fake_accuracy': group_fake_correct[0] / current_pairs,
+            'replay_pairs': replay_pairs,
+            'replay_weight': replay_weight,
+            'replay_loss': group_loss[1] / (2 * replay_pairs) if replay_pairs else None,
+            'replay_real_accuracy': group_real_correct[1] / replay_pairs if replay_pairs else None,
+            'replay_fake_accuracy': group_fake_correct[1] / replay_pairs if replay_pairs else None,
+            'replay_buffer_size': len(replay.indices) if replay else 0,
+            'replay_seen': replay.seen if replay else 0,
             'mean_preupdate_fake_probability': sum(x['preupdate_fake_probability'] for x in block_generation) / pair_count,
             'mean_strength': sum(x['strength'] for x in block_generation) / pair_count,
             'gradient_norm': gradient_norm, 'elapsed_seconds': time.monotonic() - started,
@@ -274,7 +320,7 @@ def main():
         history.append(row)
         write_generation_rows(generation_path, generation_rows)
         save_state(latest_path, model, optimizer, completed, optimizer_steps,
-                   config, manifest_hash, history)
+                   config, manifest_hash, history, replay)
         with metrics_path.open('a', encoding='utf-8') as handle:
             handle.write(json.dumps(row) + '\n')
         if tracker:
