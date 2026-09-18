@@ -11,6 +11,7 @@ The selected epoch-2 baseline and the selected fine-tuned ResNet-50 critics were
 | ResNet-50 critic + PROBE fine-tuning | 99.73% | 52.10% | 49.92% | 72.33% | 54.80% | 60.33% | 99.69% | 96.51% | **73.18%** |
 | ResNet-50 critic + online unguided training | 95.25% | 56.45% | 47.88% | 75.86% | 62.61% | 65.09% | 95.32% | 90.94% | **73.68%** |
 | ResNet-50 critic + online guided training | 95.72% | 57.11% | 47.67% | 74.97% | 63.57% | 66.19% | 95.71% | 92.82% | **74.22%** |
+| ResNet-50 critic + online guided training, 40K + cosine LR | 96.48% | 59.23% | 48.43% | 72.46% | 59.57% | 69.51% | 96.49% | 93.84% | **74.50%** |
 | ResNet-50 critic + saved guided data + cosine LR | 92.51% | 60.33% | 43.77% | 75.71% | 64.62% | 73.38% | 92.26% | 91.15% | **74.22%** |
 | ResNet-50 critic + shuffled saved guided data + cosine LR | 94.80% | 57.71% | 46.90% | 74.88% | 62.60% | 68.61% | 94.46% | 92.43% | **74.05%** |
 | Online-guided critic + shuffled saved-data fine-tuning | 97.18% | 57.79% | 49.01% | 72.63% | 60.89% | 66.85% | 96.98% | 93.75% | **74.38%** |
@@ -20,6 +21,8 @@ Adding the unguided SD1.4 control set improved average balanced accuracy by 0.64
 The online-guided model was initialized from ImageNet ResNet-50 weights and trained only on 20,000 unique COCO real images paired with hard SD1.4 samples generated against the evolving detector. It reached 74.22% across all eight generators and 71.15% across the seven unseen generators. Relative to the baseline critic, this is a gain of 1.82 and 2.65 percentage points, respectively. The improvement is concentrated on ADM, Midjourney, VQDM, and GLIDE; SD-family accuracy decreased slightly, and BigGAN fake accuracy remained effectively zero. This indicates improved transfer to several diffusion-based domains but not a universal fake-image representation.
 
 The matched online-unguided ablation used the same 20,000 unique COCO image-caption pairs, seeds, SD1.4 sampling settings, sequential 64-pair updates, and detector optimization, but kept classifier-guidance strength at zero throughout generation. It reached 73.68% across all eight generators and 70.59% across the seven unseen generators. Online classifier guidance therefore improved the all-generator and unseen-generator averages by 0.54 and 0.56 percentage points, respectively. The guided model improved most on Wukong, GLIDE, and VQDM, while the unguided model was slightly better on Midjourney and BigGAN. This controlled result indicates a small but measurable benefit from adapting generated samples to the evolving detector.
+
+Expanding online-guided training to 40,000 unique COCO image-caption pairs and decaying the learning rate from `1e-4` to `1e-6` produced 74.501% across all generators and 71.360% across unseen generators. Relative to the 20K online-guided run, these are gains of 0.282 and 0.213 percentage points. Macro real accuracy increased from 95.46% to 97.09%, while macro fake accuracy decreased from 52.98% to 51.91%; the small balanced-accuracy gain therefore includes another shift toward real predictions. ADM and GLIDE improved, while Midjourney and VQDM declined.
 
 Training a fresh ImageNet ResNet-50 on the retained online-generated set in the same sequential block order, while decaying the learning rate from `1e-4` to `1e-6`, produced 74.215% across all generators and 71.602% across unseen generators. Its overall balanced accuracy is effectively identical to online training (74.218%), with a 0.455-point unseen-generator gain. The cosine model predicts fake more often: macro fake accuracy increased from 52.98% to 60.48%, while macro real accuracy decreased from 95.46% to 87.95%. The result is therefore a threshold tradeoff rather than an unambiguous overall improvement.
 
@@ -36,6 +39,8 @@ Starting from the online-guided critic and fine-tuning it again on the shuffled 
 - [Unguided-data control per-generator results](outputs/resnet50_critic_unguided_sd14_control/genimage_evaluation/summary.json)
 - [Online-guided critic combined results](outputs/resnet50_online_guided_coco20k/genimage_evaluation/combined_summary.json)
 - [Online-guided critic per-generator results](outputs/resnet50_online_guided_coco20k/genimage_evaluation/summary.json)
+- [40K online-guided cosine critic combined results](outputs/resnet50_online_guided_cosine_coco40k/genimage_evaluation/combined_summary.json)
+- [40K online-guided cosine critic per-generator results](outputs/resnet50_online_guided_cosine_coco40k/genimage_evaluation/summary.json)
 - [Online-unguided critic SD 1.4 result](outputs/resnet50_online_unguided_coco20k/genimage_evaluation/stable_diffusion_v_1_4.json)
 - [Online-unguided critic unseen-generator results](outputs/resnet50_online_unguided_coco20k/genimage_evaluation/summary.json)
 - [Saved-data cosine critic combined results](outputs/resnet50_saved_guided_cosine_coco20k/genimage_evaluation/combined_summary.json)
