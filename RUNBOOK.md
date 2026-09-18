@@ -416,6 +416,56 @@ bash scripts/finetune_probe.sh \
   --resume outputs/resnet50_critic_unguided_sd14_control/latest.pt
 ```
 
+### Train with differentiable real-guided reconstruction regularization
+
+Purpose: train an ImageNet-pretrained ResNet-50 on the official GenImage SD1.4 train
+split while shaping its classifier-guidance field. Every real/fake pair is VAE-encoded,
+noised to the first DDIM timestep at or below 200, and reconstructed twice from identical
+noise. The unguided path is the reference. The guided path applies all eight low-noise
+DDIM steps toward the real class and retains second-order gradients into the critic.
+Training minimizes real reconstruction displacement and a bounded ranking loss requiring
+fake displacement to exceed real displacement. The distance combines normalized latent
+MSE, pixel L1, and LPIPS. Ordinary BCE remains as an anchor.
+
+This configuration targets a 32 GB RTX 5090: BF16, batch size one real/fake pair,
+activation checkpointing, frozen SD/VAE/text encoder and LPIPS, and four-pair gradient
+accumulation. Startup runs a full gradient/memory audit before optimization.
+
+Wrapper: `scripts/train_reconstruction_guided.sh`
+
+Config: `configs/experiments/resnet50_reconstruction_guided_sd14.yaml`
+
+Run only the second-order gradient and peak-memory audit:
+
+```bash
+bash scripts/train_reconstruction_guided.sh --audit-only
+```
+
+Run a separate 256-pair pilot before committing to the full 162,000-pair experiment:
+
+```bash
+bash scripts/train_reconstruction_guided.sh \
+  --max-pairs 256 \
+  --output outputs/resnet50_reconstruction_guided_sd14_pilot
+```
+
+Run the full experiment:
+
+```bash
+bash scripts/train_reconstruction_guided.sh
+```
+
+Resume from the most recent saved optimizer update:
+
+```bash
+bash scripts/train_reconstruction_guided.sh --resume
+```
+
+Paths can be changed without editing YAML using `--data-root`, `--model-path`,
+`--pretrained`, and `--output`. If the memory audit exceeds the available VRAM, reduce
+`differentiable_guidance_steps` from eight to four; this changes the experiment and must
+use a separate output directory.
+
 ## 6. Train and visualize a learnable SD1.4 soft prompt
 
 ### Audit the differentiable path

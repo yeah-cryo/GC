@@ -1,0 +1,41 @@
+data_root: /data/local/datasets/GenImage/stable_diffusion_v_1_4/imagenet_ai_0419_sdv4
+model_path: /data/local/models/stable-diffusion-v1-4
+pretrained: models/resnet50-11ad3fa6.pth
+output: outputs/resnet50_reconstruction_guided_sd14
+expected_per_class: 162000
+training_pairs: 162000
+seed: 42
+noise_seed_start: 500000
+resolution: 512
+precision: bf16
+ddim_steps: 35
+maximum_noise_timestep: 200
+differentiable_guidance_steps: 8
+guidance_strength: 20.0
+gradient_rms_clip: 0.1
+conditioning_prompt: ""
+latent_channel_std: [1.0, 1.0, 1.0, 1.0]
+lpips_backbone: alex
+reconstruction_weights:
+  latent: 1.0
+  pixel: 1.0
+  lpips: 1.0
+ranking_margin: 0.05
+classification_weight: 1.0
+real_preservation_weight: 1.0
+ranking_weight: 1.0
+batch_size_pairs: 1
+gradient_accumulation_steps: 4
+gradient_clip_norm: 1.0
+learning_rate: 0.00001
+minimum_learning_rate: 0.000001
+weight_decay: 0.0001
+betas: [0.9, 0.999]
+epsilon: 0.00000001
+workers: 4
+decode_attempts: 32
+checkpoint_every_updates: 100
+run_gradient_audit: true
+swanlab:
+  project: aigi-detection
+  experiment_name: resnet50-reconstruction-guided-sd14

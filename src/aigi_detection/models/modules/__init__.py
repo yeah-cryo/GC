@@ -1,1 +1,1 @@
-"""Reserved for future generator probing; phase 1 never loads SD."""
+"""Differentiable diffusion and detector-guidance components."""
