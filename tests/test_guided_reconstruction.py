@@ -78,6 +78,20 @@ def test_second_order_reconstruction_gradient_reaches_critic():
     assert len(result['guided_timesteps']) == 2
 
 
+def test_frozen_critic_reconstruction_releases_graph():
+    sd, critic = make_sd(), Critic().requires_grad_(False)
+    image = torch.linspace(0, 1, 3 * 32 * 32).reshape(1, 3, 32, 32)
+    conditioning = torch.zeros(1, 4, 8)
+    noise = torch.randn(1, 4, 4, 4, generator=torch.Generator().manual_seed(7))
+    result = reconstruct_with_real_guidance(
+        sd, critic, image, conditioning, noise, maximum_timestep=10,
+        differentiable_steps=2, strength=2.0, rms_clip=0.1,
+        checkpointing=False, second_order=False)
+    assert not result['guided_latent'].requires_grad
+    assert not result['guided_image'].requires_grad
+    assert not torch.equal(result['guided_latent'], result['baseline_latent'])
+
+
 def test_ranking_loss_is_bounded_by_margin():
     real = {'latent': torch.tensor(.1), 'pixel': torch.tensor(.2), 'lpips': torch.tensor(.3)}
     fake = {'latent': torch.tensor(.4), 'pixel': torch.tensor(.5), 'lpips': torch.tensor(.6)}

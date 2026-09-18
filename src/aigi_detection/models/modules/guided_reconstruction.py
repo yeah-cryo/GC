@@ -60,11 +60,13 @@ def _unguided_step(sd, latent, timestep, conditioning, checkpointing=False):
 
 def reconstruct_with_real_guidance(sd, critic, image, conditioning, noise, maximum_timestep=200,
                                    differentiable_steps=2, strength=20.0, rms_clip=0.1,
-                                   checkpointing=True):
+                                   checkpointing=True, second_order=True):
     """Return matched unguided/guided reconstructions from one noised image latent.
 
     Early reverse steps and the unguided reference are detached. The final
-    ``differentiable_steps`` retain second-order gradients through classifier guidance.
+    ``differentiable_steps`` retain second-order gradients through classifier guidance
+    when ``second_order`` is true. Disable it when measuring a frozen critic to release
+    each step's graph immediately and substantially reduce memory use.
     """
     if differentiable_steps < 1:
         raise ValueError('differentiable_steps must be positive.')
@@ -96,13 +98,21 @@ def reconstruct_with_real_guidance(sd, critic, image, conditioning, noise, maxim
         real_target = torch.zeros_like(logits)
         guidance_loss = F.binary_cross_entropy_with_logits(logits, real_target)
         gradient = torch.autograd.grad(
-            guidance_loss, guided_latent, create_graph=True, retain_graph=True)[0]
+            guidance_loss, guided_latent, create_graph=second_order,
+            retain_graph=second_order)[0]
         corrected, rms = differentiable_guided_epsilon(
             epsilon, gradient, alpha, strength, rms_clip)
         guided_latent = sd.scheduler.step(
             corrected, timestep, guided_latent.float(), eta=0.0).prev_sample
+        if not second_order:
+            guided_latent = guided_latent.detach().requires_grad_(True)
         guidance_rms.append(rms.detach())
-    guided_image = decode_latent(sd, guided_latent, checkpointing)
+    if second_order:
+        guided_image = decode_latent(sd, guided_latent, checkpointing)
+    else:
+        with torch.no_grad():
+            guided_image = decode_latent(sd, guided_latent, checkpointing=False).detach()
+        guided_latent = guided_latent.detach()
     return {
         'source_latent': source_latent.detach(),
         'baseline_latent': baseline_latent.detach(),

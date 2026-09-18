@@ -57,6 +57,23 @@ Starting from the online-guided critic and fine-tuning it again on the shuffled 
 
 ## ResNet-50 Classifier-Guidance Results
 
+### Real-image reconstruction shift of the online-trained critic
+
+We measured how the ResNet-50 fine-tuned with 40,000 online-generated images moves real images when used as a frozen real-target guidance classifier. For 100 randomly selected GenImage SD 1.4 training photographs, each unguided and guided reconstruction used the same input image, VAE latent, noise, and eight low-noise DDIM steps (timesteps 197 to 1). Guidance strength was 20 and the BCE target was label 0 (real).
+
+| Measurement (mean over 100 real images) | Unguided | Guided to real | Change caused by guidance |
+|---|---:|---:|---:|
+| Critic fake probability | 48.68% | 16.45% | **−32.23 pp** |
+| Images classified as fake | 51% | 9% | **−42 pp** |
+| Pixel L1 to source | 0.048328 | 0.048364 | +0.000036 (+0.07%) |
+| LPIPS to source | 0.160286 | 0.161894 | +0.001608 (+1.00%) |
+
+The direct guided-versus-unguided displacement was 0.003620 pixel L1, 0.004575 LPIPS, and 0.000437 latent MSE. Thus the detector can strongly change its own decision using visually small corrections, while adding little average source-relative reconstruction error. The matched grid also shows no obvious semantic or color shift at this strength. This is encouraging for the proposed real-preservation term, although it does not prove that the learned direction is natural: subtle detector-specific or high-frequency changes can have a large score effect.
+
+- [Matched real / unguided / real-guided grid](outputs/reconstruction_shift_online40k_real100/matched_grid.jpg)
+- [Summary](outputs/reconstruction_shift_online40k_real100/summary.json)
+- [Per-image metrics](outputs/reconstruction_shift_online40k_real100/metrics.jsonl)
+
 We generated four matched examples with the fixed prompt “a realistic photo” and the frozen ResNet-50 critic. Fake probabilities are averaged over seeds 21001–21004.
 
 | Guidance strength | Mean fake probability |

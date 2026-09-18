@@ -466,6 +466,30 @@ Paths can be changed without editing YAML using `--data-root`, `--model-path`,
 `differentiable_guidance_steps` from eight to four; this changes the experiment and must
 use a separate output directory.
 
+### Measure real-image reconstruction shift
+
+Purpose: freeze the 40K online-guided critic and compare matched unguided and label-0
+(real) guided reconstructions of 100 real GenImage images. It writes a manifest,
+per-image pixel/latent/LPIPS metrics, a summary, and a three-row matched grid.
+
+Wrapper: `scripts/evaluate_reconstruction_shift.sh`
+
+Entry point: `tools/evaluate_reconstruction_shift.py`
+
+Default config: `configs/experiments/reconstruction_shift_online40k_real100.yaml`
+
+```bash
+bash scripts/evaluate_reconstruction_shift.sh
+```
+
+For a small smoke run with a separate output directory:
+
+```bash
+bash scripts/evaluate_reconstruction_shift.sh \
+  --count 1 \
+  --output outputs/reconstruction_shift_smoke
+```
+
 ## 6. Train and visualize a learnable SD1.4 soft prompt
 
 ### Audit the differentiable path
@@ -515,12 +539,14 @@ PYTHONPATH=src .venv/bin/python -u tools/visualize_prompt.py \
 | `scripts/train.sh` | Shell wrapper for baseline critic training |
 | `scripts/evaluate.sh` | Shell wrapper for one official validation split |
 | `scripts/evaluate_genimage.sh` | Shell wrapper for all unseen GenImage generators |
+| `scripts/evaluate_reconstruction_shift.sh` | Shell wrapper for frozen-critic real reconstruction shift measurement |
 | `scripts/sample_classifier_guidance.sh` | Shell wrapper for guided or unguided SD1.4 sampling |
 | `scripts/finetune_probe.sh` | Shell wrapper for PROBE-style critic fine-tuning |
 | `scripts/train_prompt.sh` | Shell wrapper for soft-prompt auditing/training |
 | `tools/train_critic.py` | Baseline critic trainer |
 | `tools/evaluate_critic.py` | Single-split critic evaluator |
 | `tools/evaluate_genimage.py` | Multi-generator GenImage evaluator |
+| `tools/evaluate_reconstruction_shift.py` | Matched unguided/real-guided reconstruction evaluator |
 | `tools/prepare_coco_prompts.py` | COCO caption-manifest builder |
 | `tools/sample_classifier_guidance.py` | Classifier-guided SD1.4 sampler and visualization rebuilder |
 | `tools/summarize_guidance.py` | Guidance CSV and compact-grid exporter |
