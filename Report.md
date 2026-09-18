@@ -55,6 +55,19 @@ Starting from the online-guided critic and fine-tuning it again on the shuffled 
 - [Online-then-shuffled critic combined results](outputs/resnet50_online_then_saved_guided_cosine_shuffled_coco20k/genimage_evaluation/combined_summary.json)
 - [Online-then-shuffled critic per-generator results](outputs/resnet50_online_then_saved_guided_cosine_shuffled_coco20k/genimage_evaluation/summary.json)
 
+## GenImage Feature Embedding Visualization
+
+We extracted the 2,048-dimensional penultimate features of the ResNet-50 critic trained with 40,000 online-guided samples and cosine learning-rate decay. The sample contains 1,000 shared real photographs and 1,000 fake images from each of SD 1.4, ADM, BigGAN, Midjourney, VQDM, and GLIDE. Each feature is the mean over the five official validation crops. PCA reduced the features to 50 dimensions (78.43% explained variance), followed by t-SNE with perplexity 30 and seed 42.
+
+![GenImage t-SNE by source and class](outputs/resnet50_online_guided_cosine_coco40k/genimage_tsne/genimage_tsne.png)
+
+BigGAN forms a nearly isolated feature cluster even though this critic detects BigGAN poorly, indicating a generator-specific representation that the binary decision head does not map reliably to fake. SD 1.4 and Midjourney also concentrate in distinct regions. ADM, VQDM, and GLIDE overlap more extensively with the real-image region. Since t-SNE distorts global distance, this figure supports qualitative cluster analysis rather than quantitative claims about inter-generator distance.
+
+- [Full-resolution PNG](outputs/resnet50_online_guided_cosine_coco40k/genimage_tsne/genimage_tsne.png)
+- [Vector PDF](outputs/resnet50_online_guided_cosine_coco40k/genimage_tsne/genimage_tsne.pdf)
+- [Coordinates and fake probabilities](outputs/resnet50_online_guided_cosine_coco40k/genimage_tsne/tsne_coordinates.csv)
+- [Sampling and embedding summary](outputs/resnet50_online_guided_cosine_coco40k/genimage_tsne/summary.json)
+
 ## ResNet-50 Classifier-Guidance Results
 
 ### Real-image reconstruction shift of the online-trained critic

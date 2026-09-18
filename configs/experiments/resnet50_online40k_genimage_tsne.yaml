@@ -1,0 +1,20 @@
+checkpoint: outputs/resnet50_online_guided_cosine_coco40k/final.pt
+data_root: /mnt/f/datasets/GenImage
+output: outputs/resnet50_online_guided_cosine_coco40k/genimage_tsne
+generators:
+  SD1.4: stable_diffusion_v_1_4
+  ADM: ADM
+  BigGAN: BigGAN
+  Midjourney: Midjourney
+  VQDM: VQDM
+  GLIDE: glide
+real_source: SD1.4
+samples_per_source: 1000
+seed: 42
+batch_size: 32
+workers: 8
+crop_size: 224
+pca_components: 50
+tsne_perplexity: 30.0
+tsne_learning_rate: auto
+tsne_iterations: 1500

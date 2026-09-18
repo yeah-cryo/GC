@@ -114,6 +114,23 @@ bash scripts/evaluate_genimage.sh \
 
 Optional arguments are `--batch-size` and `--workers`.
 
+### Visualize GenImage embeddings with t-SNE
+
+Purpose: sample 1,000 shared real validation images and 1,000 fake validation images
+from each of SD1.4, ADM, BigGAN, Midjourney, VQDM, and GLIDE. It averages the
+penultimate ResNet-50 representation over five validation crops, reduces it with PCA
+and t-SNE, and colors every point by image source.
+
+Wrapper: `scripts/visualize_genimage_tsne.sh`
+
+Entry point: `tools/visualize_genimage_tsne.py`
+
+Default config: `configs/experiments/resnet50_online40k_genimage_tsne.yaml`
+
+```bash
+bash scripts/visualize_genimage_tsne.sh
+```
+
 ### Score a saved hard-sample set
 
 Purpose: score saved classifier-guided PNG files with a ResNet critic using five fixed crops and report mean fake probability and real/fake classification rates. It also writes one score per image.
@@ -540,6 +557,7 @@ PYTHONPATH=src .venv/bin/python -u tools/visualize_prompt.py \
 | `scripts/evaluate.sh` | Shell wrapper for one official validation split |
 | `scripts/evaluate_genimage.sh` | Shell wrapper for all unseen GenImage generators |
 | `scripts/evaluate_reconstruction_shift.sh` | Shell wrapper for frozen-critic real reconstruction shift measurement |
+| `scripts/visualize_genimage_tsne.sh` | Shell wrapper for GenImage critic-feature t-SNE |
 | `scripts/sample_classifier_guidance.sh` | Shell wrapper for guided or unguided SD1.4 sampling |
 | `scripts/finetune_probe.sh` | Shell wrapper for PROBE-style critic fine-tuning |
 | `scripts/train_prompt.sh` | Shell wrapper for soft-prompt auditing/training |
@@ -547,6 +565,7 @@ PYTHONPATH=src .venv/bin/python -u tools/visualize_prompt.py \
 | `tools/evaluate_critic.py` | Single-split critic evaluator |
 | `tools/evaluate_genimage.py` | Multi-generator GenImage evaluator |
 | `tools/evaluate_reconstruction_shift.py` | Matched unguided/real-guided reconstruction evaluator |
+| `tools/visualize_genimage_tsne.py` | Penultimate-feature extraction and GenImage t-SNE visualizer |
 | `tools/prepare_coco_prompts.py` | COCO caption-manifest builder |
 | `tools/sample_classifier_guidance.py` | Classifier-guided SD1.4 sampler and visualization rebuilder |
 | `tools/summarize_guidance.py` | Guidance CSV and compact-grid exporter |
