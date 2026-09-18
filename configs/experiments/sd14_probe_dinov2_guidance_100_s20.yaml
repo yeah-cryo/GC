@@ -1,0 +1,16 @@
+model_path: /mnt/e/repos/stable-diffusion-v1-4
+critic_type: probe_dinov2_linear
+critic_checkpoint: /mnt/e/repos/PROBE-AIGI-Detection/ckpt/DINOv2_best_model_step_34999.pth
+snapshot_critic: false
+critic_crop_size: 336
+output: outputs/sd14_probe_dinov2_guidance_100_s20
+prompt: a realistic photo
+resolution: 512
+ddim_steps: 35
+cfg_scale: 7.5
+precision: bf16
+max_guidance_timestep: 200
+gradient_rms_clip: 0.1
+strengths: [20.0]
+seed_start: 22001
+num_images: 100

@@ -157,13 +157,17 @@ def main():
             return
     seed_everything(42)
     torch.set_num_threads(2)
-    snapshot = output / 'critic.pt'
-    if not snapshot.exists():
-        shutil.copyfile(config['critic_checkpoint'], snapshot.with_suffix('.tmp'))
-        os.replace(snapshot.with_suffix('.tmp'), snapshot)
+    if config.get('snapshot_critic', True):
+        snapshot = output / 'critic.pt'
+        if not snapshot.exists():
+            shutil.copyfile(config['critic_checkpoint'], snapshot.with_suffix('.tmp'))
+            os.replace(snapshot.with_suffix('.tmp'), snapshot)
+    else:
+        snapshot = Path(config['critic_checkpoint'])
     with snapshot.open('rb') as handle:
         critic_hash = hashlib.file_digest(handle, 'sha256').hexdigest()
-    identity = {'source': config['critic_checkpoint'], 'sha256': critic_hash, 'type': config.get('critic_type', 'resnet50')}
+    identity = {'source': config['critic_checkpoint'], 'snapshot': str(snapshot),
+                'sha256': critic_hash, 'type': config.get('critic_type', 'resnet50')}
     checkpoint = torch.load(snapshot, map_location='cpu', weights_only=False)
     if config.get('critic_type') == 'dinov3_original_mlp':
         from aigi_detection.models.backbones.dinov3_critic import DINOv3Critic
@@ -188,6 +192,30 @@ def main():
                     'parameters_frozen': all(not p.requires_grad and p.grad is None for p in critic.parameters())},
                    output / 'critic_audit.json')
         del probe, adapted, direct, embedding, gradient
+    elif config.get('critic_type') == 'probe_dinov2_linear':
+        from aigi_detection.models.backbones.probe_dinov2_critic import PROBEDINOv2Critic
+        if set(checkpoint) != {'model_state_dict'}:
+            raise ValueError(f'Unexpected PROBE DINOv2 checkpoint keys: {list(checkpoint)}')
+        critic = PROBEDINOv2Critic(
+            checkpoint['model_state_dict'], crop_size=config.get('critic_crop_size', 336)).cuda()
+        identity.update(
+            architecture='DINOv2-L/14 with 4 registers + linear 1024-to-1 head',
+            preprocessing='ImageNet normalization; non-overlapping 336x336 crops; mean patch logit',
+            precision='BF16 autocast for differentiable guidance and scoring',
+            label_mapping={'nature': 0, 'ai': 1},
+            source_repository='/mnt/e/repos/PROBE-AIGI-Detection')
+        probe = torch.rand(1, 3, config['resolution'], config['resolution'],
+                           device='cuda', requires_grad=True)
+        adapted = critic.score_images(probe)
+        gradient = torch.autograd.grad(adapted.sum(), probe)[0]
+        if not torch.isfinite(gradient).all() or gradient.norm() <= 0:
+            raise RuntimeError('PROBE DINOv2 critic did not provide a finite image gradient.')
+        write_json({'input_gradient_norm': gradient.norm().item(),
+                    'output_shape': list(adapted.shape),
+                    'parameters_frozen': all(not p.requires_grad and p.grad is None
+                                             for p in critic.parameters())},
+                   output / 'critic_audit.json')
+        del probe, adapted, gradient
     else:
         if checkpoint['label_mapping'] != {'nature': 0, 'ai': 1}:
             raise ValueError('Expected fake=1, real=0 critic.')
