@@ -307,6 +307,27 @@ Resume from the last completed pair block:
 bash scripts/train_saved_guided_critic.sh --resume
 ```
 
+### Train on the first 10,000 saved samples from the 40K online run
+
+Purpose: initialize a fresh ImageNet-pretrained ResNet-50 and train it once, in original
+generation order, on the first 10,000 real/generated pairs retained by the 40K online
+guided experiment. Exact 10,000-line source manifests are used, and AdamW learning rate
+decays from `1e-4` to `1e-6` over 157 optimizer steps.
+
+Wrapper: `scripts/train_saved_online40k_first10k.sh`
+
+Config: `configs/experiments/resnet50_saved_online40k_first10k_cosine.yaml`
+
+```bash
+bash scripts/train_saved_online40k_first10k.sh
+```
+
+Resume from the last completed block:
+
+```bash
+bash scripts/train_saved_online40k_first10k.sh --resume
+```
+
 ### Random-order ablation for the saved online-guided set
 
 Purpose: repeat the saved-data cosine experiment with one deterministic random
