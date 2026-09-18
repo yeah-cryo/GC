@@ -45,6 +45,26 @@ def guidance_strength(index, config):
     return target
 
 
+def build_guidance_targets(config):
+    count = int(config['num_images'])
+    distribution = config.get('guidance_target_distribution', 'fixed')
+    if distribution == 'fixed':
+        target = float(config.get('guidance_target', 0.0))
+        if not math.isfinite(target) or not 0 <= target <= 1:
+            raise ValueError('guidance_target must be finite and in [0, 1].')
+        return torch.full((count,), target, dtype=torch.float32)
+    if distribution != 'clipped_abs_gaussian':
+        raise ValueError('guidance_target_distribution must be fixed or clipped_abs_gaussian.')
+    mean = float(config.get('guidance_target_mean', 0.0))
+    standard_deviation = float(config['guidance_target_std'])
+    if not math.isfinite(mean) or not math.isfinite(standard_deviation) or standard_deviation <= 0:
+        raise ValueError('Gaussian guidance target mean must be finite and std must be positive.')
+    generator = torch.Generator(device='cpu')
+    generator.manual_seed(int(config.get('guidance_target_seed', config['seed'])))
+    values = torch.randn(count, generator=generator, dtype=torch.float32)
+    return (values * standard_deviation + mean).abs().clamp_(0.0, 1.0)
+
+
 def real_path(root, image_id):
     return Path(root) / f'COCO_train2014_{int(image_id):012d}.jpg'
 
@@ -103,6 +123,7 @@ def main():
         if not 0 <= minimum_lr < config['learning_rate']:
             raise ValueError('minimum_learning_rate must be in [0, learning_rate).')
 
+    guidance_targets = build_guidance_targets(config)
     seed_everything(config['seed'])
     torch.set_num_threads(2)
     device = torch.device('cuda')
@@ -191,6 +212,13 @@ def main():
                 'unique_image_ids': len(set(image_ids)),
                 'selection': 'first caption annotation per unique COCO image ID'},
                output / 'manifest_identity.json')
+    write_json({'distribution': config.get('guidance_target_distribution', 'fixed'),
+                'mean': guidance_targets.mean().item(),
+                'standard_deviation': guidance_targets.std(unbiased=False).item(),
+                'minimum': guidance_targets.min().item(),
+                'maximum': guidance_targets.max().item(),
+                'clipped_at_one': int((guidance_targets == 1).sum()),
+                'samples': len(guidance_targets)}, output / 'guidance_targets_summary.json')
     if not latest_path.exists():
         save_state(latest_path, model, optimizer, scheduler, completed, optimizer_steps,
                    config, manifest_hash, history, replay)
@@ -225,13 +253,15 @@ def main():
         for index in range(block_start, block_end):
             record = prompt_records[index]
             strength = guidance_strength(index, config)
+            target_fake_probability = guidance_targets[index].item()
             path = fake_dir / f'fake_{index:05d}.png'
             generated_at = time.monotonic()
             with torch.no_grad():
                 condition = encode_plain(sd.text_encoder, sd.tokenizer, record['caption'])
             image, step_logs, _ = sample_guided(
                 sd, model, condition, unconditional, config['seed_start'] + index, strength,
-                config['max_guidance_timestep'], config['gradient_rms_clip'])
+                config['max_guidance_timestep'], config['gradient_rms_clip'],
+                target_fake_probability=target_fake_probability)
             with torch.no_grad():
                 preupdate_logit = critic_logits(model, image).item()
             save_image(image, path)
@@ -240,6 +270,7 @@ def main():
                 'prompt_index': index, 'annotation_id': record['annotation_id'],
                 'image_id': record['image_id'], 'caption': record['caption'],
                 'seed': config['seed_start'] + index, 'strength': strength,
+                'target_fake_probability': target_fake_probability,
                 'fake_path': str(path), 'preupdate_fake_logit': preupdate_logit,
                 'preupdate_fake_probability': torch.tensor(preupdate_logit).sigmoid().item(),
                 'guided_steps': len(guided),
@@ -250,7 +281,8 @@ def main():
             generation_rows.append(row)
             block_generation.append(row)
             print(json.dumps({key: row[key] for key in ('prompt_index', 'strength',
-                                                        'preupdate_fake_probability', 'generation_seconds')}),
+                                                        'target_fake_probability', 'preupdate_fake_probability',
+                                                        'generation_seconds')}),
                   flush=True)
 
         # The SD graph is gone. Train the same detector on current and replayed pairs.
@@ -336,6 +368,7 @@ def main():
             'replay_seen': replay.seen if replay else 0,
             'mean_preupdate_fake_probability': sum(x['preupdate_fake_probability'] for x in block_generation) / pair_count,
             'mean_strength': sum(x['strength'] for x in block_generation) / pair_count,
+            'mean_target_fake_probability': sum(x['target_fake_probability'] for x in block_generation) / pair_count,
             'gradient_norm': gradient_norm, 'elapsed_seconds': time.monotonic() - started,
             'learning_rate': learning_rate,
             'next_learning_rate': optimizer.param_groups[0]['lr'],

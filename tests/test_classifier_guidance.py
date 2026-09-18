@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 
+import pytest
 import torch
 from torch import nn
 from diffusers import DDIMScheduler
@@ -67,3 +68,17 @@ def test_only_low_noise_steps_are_guided_towards_real():
     assert len(images) == 2 and not guided.requires_grad
     assert all(row['gradient_rms'] > 0 for row in logs if row['guided'])
     assert critic_logits(critic, guided) < critic_logits(critic, baseline)
+
+
+def test_soft_fake_probability_target_is_used_and_validated():
+    sd, critic = make_sd(), Critic()
+    context = torch.zeros(1, 4, 8)
+    _, logs, _ = sample_guided(
+        sd, critic, context, context, 42, 5, 6,
+        target_fake_probability=0.75,
+    )
+    guided = [row for row in logs if row['guided']]
+    assert guided and all(row['target_fake_probability'] == 0.75 for row in guided)
+    for target in (-0.1, 1.1, float('nan')):
+        with pytest.raises(ValueError, match=r'in \[0, 1\]'):
+            sample_guided(sd, critic, context, context, 42, target_fake_probability=target)

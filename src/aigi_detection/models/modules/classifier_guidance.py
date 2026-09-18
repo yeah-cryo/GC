@@ -1,4 +1,6 @@
 """Low-noise, predicted-x0 classifier guidance with a clean-image critic."""
+import math
+
 import torch
 from torch.nn import functional as F
 from torch.utils.checkpoint import checkpoint
@@ -22,9 +24,12 @@ def guided_epsilon(epsilon, loss_gradient, alpha, strength, rms_clip):
 
 
 def sample_guided(sd, critic, conditioning, unconditional, seed, strength=5.0,
-                  max_timestep=200, gradient_rms_clip=0.1, capture_estimates=False):
+                  max_timestep=200, gradient_rms_clip=0.1, capture_estimates=False,
+                  target_fake_probability=0.0):
     if strength < 0 or gradient_rms_clip <= 0:
         raise ValueError('Guidance strength must be nonnegative and gradient RMS cap positive.')
+    if not math.isfinite(target_fake_probability) or not 0 <= target_fake_probability <= 1:
+        raise ValueError('Guidance target fake probability must be finite and in [0, 1].')
     if sd.scheduler.config.prediction_type != 'epsilon' or sd.scheduler.config.clip_sample:
         raise ValueError('This SD1.4 sampler requires epsilon prediction and unclipped DDIM x0.')
     context = torch.cat((unconditional, conditioning)).detach().to(sd.dtype)
@@ -53,16 +58,18 @@ def sample_guided(sd, critic, conditioning, unconditional, seed, strength=5.0,
                 decoded = checkpoint(decode, predicted_x0, use_reentrant=False)
                 estimate = (decoded.float() / 2 + 0.5).clamp(0, 1)
                 logits = critic_logits(critic, estimate)
-                loss = F.binary_cross_entropy_with_logits(logits, torch.zeros_like(logits))
+                target = torch.full_like(logits, target_fake_probability)
+                loss = F.binary_cross_entropy_with_logits(logits, target)
                 gradient = torch.autograd.grad(loss, x)[0]
             with torch.no_grad():
                 corrected, raw_rms, clipped_rms = guided_epsilon(epsilon.detach(), gradient, alpha, strength, gradient_rms_clip)
                 latents = sd.scheduler.step(corrected, timestep, x.detach().float(), eta=0.0).prev_sample.to(sd.dtype)
                 logs.append({'timestep': t, 'guided': True, 'estimated_x0_fake_probability': logits.sigmoid().item(),
-                             'estimated_x0_bce': loss.item(), 'gradient_rms': raw_rms, 'clipped_gradient_rms': clipped_rms})
+                             'estimated_x0_bce': loss.item(), 'target_fake_probability': target_fake_probability,
+                             'gradient_rms': raw_rms, 'clipped_gradient_rms': clipped_rms})
                 if capture_estimates:
                     estimates.append(estimate.detach().cpu())
-            del x, epsilon, predicted_x0, decoded, estimate, logits, loss, gradient, corrected
+            del x, epsilon, predicted_x0, decoded, estimate, logits, target, loss, gradient, corrected
         else:
             with torch.no_grad():
                 epsilon = predict(latents)
