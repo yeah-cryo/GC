@@ -151,6 +151,13 @@ Optional arguments are `--batch-size` and `--workers`.
 
 ### Generic classifier-guidance command
 
+PROBE DINOv2-L classifier guidance, 100 images at strength 20:
+
+```bash
+PYTHONPATH=src .venv/bin/python -u tools/sample_classifier_guidance.py \
+  --config configs/experiments/sd14_probe_dinov2_guidance_100_s20.yaml
+```
+
 Purpose: generate SD1.4 images while optionally steering low-noise denoising steps toward the critic's real class. The generator and critic remain frozen. Each run saves its copied critic, model identity, prompt/seed mapping, PNG files, per-step traces, per-image metrics, preview, and resumable state.
 
 Wrapper: `scripts/sample_classifier_guidance.sh`  

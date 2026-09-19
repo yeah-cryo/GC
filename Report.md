@@ -114,6 +114,21 @@ Ordinary-data fine-tuning substantially increased sensitivity to the guided samp
 - [Fine-tuned critic hard-sample evaluation](outputs/resnet50_critic_probe_guided_s20/hard_sample_evaluation/summary.json)
 - [Unguided-data control hard-sample evaluation](outputs/resnet50_critic_unguided_sd14_control/hard_sample_evaluation/summary.json)
 
+## PROBE DINOv2 Classifier-Guidance Results
+
+We generated 100 SD 1.4 images with the fixed prompt “a realistic photo,” seeds 22001–22100, and classifier-guidance strength 20. The classifier was PROBE's released fully fine-tuned DINOv2-L/14-with-registers checkpoint with its linear head. Guidance and saved-PNG scoring used the repository's ImageNet normalization and 336×336 non-overlapping crop protocol. Guidance targeted the real class during the final eight low-noise DDIM steps.
+
+| Guidance strength | Images | Mean saved-PNG fake probability | Median | Classified as real |
+|---:|---:|---:|---:|---:|
+| 20 | 100 | **9.89%** | 2.96% | **95/100 (95%)** |
+
+The fake-probability distribution was strongly right-skewed: the minimum was 0.008%, the 90th percentile was 26.74%, and the maximum was 93.63%. Although guidance successfully crossed the detector boundary for most samples, visual inspection shows malformed text, collage-like compositions, and implausible object or human structure. The result therefore demonstrates detector evasion and does not by itself establish photographic realism.
+
+- [First 16 generated samples](outputs/sd14_probe_dinov2_guidance_100_s20/strength_20_page_01.jpg)
+- [Complete 100-image grid](outputs/sd14_probe_dinov2_guidance_100_s20/strength_20.png)
+- [Per-image metrics](outputs/sd14_probe_dinov2_guidance_100_s20/metrics.jsonl)
+- [Experiment summary](outputs/sd14_probe_dinov2_guidance_100_s20/summary.json)
+
 ## DINOv3 Classifier-Guidance Results
 
 We generated 100 images for each classifier-guidance strength using the same seeds (22001–22100). The critic was the frozen, original DINOv3 ViT-L/16 backbone with its SD 1.4-trained MLP head. Fake probabilities below were measured from the saved PNG files using the critic's original preprocessing.
