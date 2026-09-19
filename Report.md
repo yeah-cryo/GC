@@ -129,6 +129,21 @@ The fake-probability distribution was strongly right-skewed: the minimum was 0.0
 - [Per-image metrics](outputs/sd14_probe_dinov2_guidance_100_s20/metrics.jsonl)
 - [Experiment summary](outputs/sd14_probe_dinov2_guidance_100_s20/summary.json)
 
+## SimLBR Classifier-Guidance Results
+
+We repeated the same 100-image experiment using the locally trained SimLBR checkpoint selected by validation accuracy (`epoch=02-step=30375-val_acc=0.976.ckpt`). This classifier uses a frozen DINOv3-L/16 backbone and a trained ReLU MLP head with dimensions 1024→512→256→1. Generation used the same prompt, seeds, SD 1.4 settings, guidance strength 20, and eight low-noise guidance steps as the PROBE DINOv2 experiment. Guidance and saved-PNG scoring used SimLBR's 256×256 resize and custom RGB normalization.
+
+| Guidance strength | Images | Mean saved-PNG fake probability | Median | Classified as real |
+|---:|---:|---:|---:|---:|
+| 20 | 100 | **6.57%** | 5.22% | **99/100 (99%)** |
+
+The minimum fake probability was 0.81%, the 90th percentile was 11.60%, and the maximum was 53.83%. Only seed 22079 remained on the fake side. Relative to PROBE DINOv2 on the same seeds, SimLBR had a 3.32-point lower mean fake probability and four additional successful evasions. Visual inspection still shows malformed text, collage-like compositions, and implausible structures, so the result measures critic evasion rather than image realism.
+
+- [First 16 generated samples](outputs/sd14_simlbr_guidance_100_s20/strength_20_page_01.jpg)
+- [Complete 100-image grid](outputs/sd14_simlbr_guidance_100_s20/strength_20.png)
+- [Per-image metrics](outputs/sd14_simlbr_guidance_100_s20/metrics.jsonl)
+- [Experiment summary](outputs/sd14_simlbr_guidance_100_s20/summary.json)
+
 ## DINOv3 Classifier-Guidance Results
 
 We generated 100 images for each classifier-guidance strength using the same seeds (22001–22100). The critic was the frozen, original DINOv3 ViT-L/16 backbone with its SD 1.4-trained MLP head. Fake probabilities below were measured from the saved PNG files using the critic's original preprocessing.

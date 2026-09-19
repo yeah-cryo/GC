@@ -216,6 +216,38 @@ def main():
                                              for p in critic.parameters())},
                    output / 'critic_audit.json')
         del probe, adapted, gradient
+    elif config.get('critic_type') == 'simlbr_dinov3_mlp':
+        from aigi_detection.models.backbones.simlbr_critic import SimLBRCritic
+        expected = {'state_dict', 'hyper_parameters'}
+        if not expected.issubset(checkpoint):
+            raise ValueError(f'Unexpected SimLBR checkpoint keys: {list(checkpoint)}')
+        hyperparameters = checkpoint['hyper_parameters']
+        if (hyperparameters.get('backbone') != 'dinov3'
+                or hyperparameters.get('hidden_layers') != 2
+                or hyperparameters.get('activation') != 'relu'):
+            raise ValueError(f'Unsupported SimLBR architecture: {hyperparameters}')
+        critic = SimLBRCritic(
+            config['dinov3_backbone'], checkpoint['state_dict'],
+            size=config.get('critic_image_size', 256)).cuda()
+        identity.update(
+            architecture='DINOv3-L/16 + ReLU MLP 1024-to-512-to-256-to-1',
+            backbone=config['dinov3_backbone'], hyper_parameters=hyperparameters,
+            preprocessing='256x256 bilinear resize; SimLBR RGB normalization',
+            precision='BF16 autocast for differentiable guidance and scoring',
+            label_mapping={'nature': 0, 'ai': 1},
+            source_repository='/mnt/e/repos/SimLBR')
+        probe = torch.rand(1, 3, config['resolution'], config['resolution'],
+                           device='cuda', requires_grad=True)
+        adapted = critic.score_images(probe)
+        gradient = torch.autograd.grad(adapted.sum(), probe)[0]
+        if not torch.isfinite(gradient).all() or gradient.norm() <= 0:
+            raise RuntimeError('SimLBR critic did not provide a finite image gradient.')
+        write_json({'input_gradient_norm': gradient.norm().item(),
+                    'output_shape': list(adapted.shape),
+                    'parameters_frozen': all(not p.requires_grad and p.grad is None
+                                             for p in critic.parameters())},
+                   output / 'critic_audit.json')
+        del probe, adapted, gradient
     else:
         if checkpoint['label_mapping'] != {'nature': 0, 'ai': 1}:
             raise ValueError('Expected fake=1, real=0 critic.')

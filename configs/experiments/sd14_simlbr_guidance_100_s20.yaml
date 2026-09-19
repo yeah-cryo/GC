@@ -1,0 +1,17 @@
+model_path: /mnt/e/repos/stable-diffusion-v1-4
+critic_type: simlbr_dinov3_mlp
+critic_checkpoint: /mnt/e/repos/SimLBR/logs/SimLBR/genimage_sd14_dinov3l_lbr_5ep/checkpoints/epoch=02-step=30375-val_acc=0.976.ckpt
+snapshot_critic: false
+dinov3_backbone: /mnt/e/repos/GGGT/pretrained_weight/dinov3-l16
+critic_image_size: 256
+output: outputs/sd14_simlbr_guidance_100_s20
+prompt: a realistic photo
+resolution: 512
+ddim_steps: 35
+cfg_scale: 7.5
+precision: bf16
+max_guidance_timestep: 200
+gradient_rms_clip: 0.1
+strengths: [20.0]
+seed_start: 22001
+num_images: 100
