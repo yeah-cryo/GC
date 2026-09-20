@@ -144,6 +144,21 @@ The minimum fake probability was 0.81%, the 90th percentile was 11.60%, and the 
 - [Per-image metrics](outputs/sd14_simlbr_guidance_100_s20/metrics.jsonl)
 - [Experiment summary](outputs/sd14_simlbr_guidance_100_s20/summary.json)
 
+## NPR Classifier-Guidance Results
+
+We repeated the same fixed-prompt experiment using the official `NPR.pth` checkpoint from NPR-DeepfakeDetection. The NPR model applies a nearest-neighbor reconstruction residual before its truncated ResNet-50. Guidance and saved-PNG evaluation used its standard 256×256 resize, 224×224 center crop, and ImageNet normalization. SD 1.4 settings, seeds 22001–22100, strength 20, and the final eight low-noise guidance steps matched the PROBE DINOv2 and SimLBR runs.
+
+| Guidance strength | Images | Mean saved-PNG fake probability | Median | Classified as real |
+|---:|---:|---:|---:|---:|
+| 20 | 100 | **18.66%** | 0.0012% | **82/100 (82%)** |
+
+Saved-PNG fake probability ranged from approximately zero to 100%, with a 90th percentile of 99.82%. Before PNG quantization, the mean was 6.89% and 94/100 images were classified as real; quantization moved 12 images back across NPR's decision boundary. This large discrepancy is consistent with NPR's reliance on local resampling residuals and means that the saved-file result is the appropriate reproducible measurement. Visual inspection shows prominent malformed text, collage-like scenes, duplicated subjects, and implausible geometry, so the run demonstrates classifier evasion rather than realistic image generation.
+
+- [First 16 generated samples](outputs/sd14_npr_guidance_100_s20/strength_20_page_01.jpg)
+- [Complete 100-image grid](outputs/sd14_npr_guidance_100_s20/strength_20.png)
+- [Per-image metrics](outputs/sd14_npr_guidance_100_s20/metrics.jsonl)
+- [Experiment summary](outputs/sd14_npr_guidance_100_s20/summary.json)
+
 ## DINOv3 Classifier-Guidance Results
 
 We generated 100 images for each classifier-guidance strength using the same seeds (22001–22100). The critic was the frozen, original DINOv3 ViT-L/16 backbone with its SD 1.4-trained MLP head. Fake probabilities below were measured from the saved PNG files using the critic's original preprocessing.

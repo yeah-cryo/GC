@@ -248,6 +248,29 @@ def main():
                                              for p in critic.parameters())},
                    output / 'critic_audit.json')
         del probe, adapted, gradient
+    elif config.get('critic_type') == 'npr_resnet50':
+        from aigi_detection.models.backbones.npr_critic import NPRCritic
+        critic = NPRCritic(
+            snapshot, resize_size=config.get('critic_resize_size', 256),
+            crop_size=config.get('critic_crop_size', 224)).cuda()
+        identity.update(
+            architecture='NPR truncated ResNet-50 (layers 1-2) with binary linear head',
+            preprocessing='256x256 bilinear resize; 224x224 center crop; ImageNet normalization',
+            precision='BF16 SD generation; FP32 NPR critic',
+            label_mapping={'nature': 0, 'ai': 1},
+            source_repository='/mnt/e/repos/NPR-DeepfakeDetection')
+        probe = torch.rand(1, 3, config['resolution'], config['resolution'],
+                           device='cuda', requires_grad=True)
+        adapted = critic.score_images(probe)
+        gradient = torch.autograd.grad(adapted.sum(), probe)[0]
+        if not torch.isfinite(gradient).all() or gradient.norm() <= 0:
+            raise RuntimeError('NPR critic did not provide a finite image gradient.')
+        write_json({'input_gradient_norm': gradient.norm().item(),
+                    'output_shape': list(adapted.shape),
+                    'parameters_frozen': all(not p.requires_grad and p.grad is None
+                                             for p in critic.parameters())},
+                   output / 'critic_audit.json')
+        del probe, adapted, gradient
     else:
         if checkpoint['label_mapping'] != {'nature': 0, 'ai': 1}:
             raise ValueError('Expected fake=1, real=0 critic.')
