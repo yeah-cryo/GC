@@ -19,6 +19,9 @@ dependencies = [
     "matplotlib>=3.9",
     "pyyaml>=6.0",
     "swanlab>=0.7",
+    "pytorch-wavelets>=1.3.0",
+    "pywavelets>=1.8.0",
+    "setuptools<81",
 ]
 
 [build-system]

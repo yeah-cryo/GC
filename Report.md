@@ -124,6 +124,7 @@ These runs use the same SD 1.4 prompt, seeds 22001–22100, guidance strength 20
 | PROBE DINOv2 | **9.89%** | 2.96% | 95/100 (95%) |
 | EFFORT | **10.42%** | 9.27% | 100/100 (100%) |
 | NPR | **18.66%** | 0.0012% | 82/100 (82%) |
+| SAFE | **85.44%** | 89.04% | 4/100 (4%) |
 
 ## PROBE DINOv2 Classifier-Guidance Results
 
@@ -184,6 +185,21 @@ Saved-PNG fake probability ranged from 0.16% to 43.16%, with a 90th percentile o
 - [Complete 100-image grid](outputs/sd14_effort_guidance_100_s20/strength_20.png)
 - [Per-image metrics](outputs/sd14_effort_guidance_100_s20/metrics.jsonl)
 - [Experiment summary](outputs/sd14_effort_guidance_100_s20/summary.json)
+
+## SAFE Classifier-Guidance Results
+
+We repeated the experiment using SAFE's released checkpoint. SAFE extracts the diagonal detail subband from a one-level symmetric `bior1.3` wavelet transform and classifies it with a truncated ResNet-50. Guidance and scoring used SAFE's official 256×256 center crop, wavelet transform, no input normalization, and fake class 1. The differentiable adapter reproduced the repository model's two logits exactly on the same input.
+
+| Guidance strength | Images | Mean saved-PNG fake probability | Median | Classified as real |
+|---:|---:|---:|---:|---:|
+| 20 | 100 | **85.44%** | 89.04% | **4/100 (4%)** |
+
+Saved-PNG fake probability ranged from 16.15% to 96.46%, with a 90th percentile of 93.10%. Before PNG quantization, the mean was 78.37% and 9/100 images were classified as real. Thus the same strength-20, eight-step guidance that fooled the feature-based detectors was mostly ineffective against SAFE. The generated images still contain the malformed text, collage-like structure, duplicated subjects, and implausible geometry seen in the other runs.
+
+- [First 16 generated samples](outputs/sd14_safe_guidance_100_s20/strength_20_page_01.jpg)
+- [Complete 100-image grid](outputs/sd14_safe_guidance_100_s20/strength_20.png)
+- [Per-image metrics](outputs/sd14_safe_guidance_100_s20/metrics.jsonl)
+- [Experiment summary](outputs/sd14_safe_guidance_100_s20/summary.json)
 
 ## DINOv3 Classifier-Guidance Results
 
