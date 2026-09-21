@@ -69,6 +69,29 @@ PYTHONPATH=src .venv/bin/python -u tools/train_critic.py \
   --config configs/experiments/resnet50_critic.yaml
 ```
 
+### Train SAFE from scratch on GenImage SD1.4
+
+Purpose: train SAFE's diagonal-wavelet, truncated ResNet-50 detector on the official
+GenImage SD1.4 training split. The workflow preserves the official validation split for
+final evaluation and uses the same deterministic class-balanced 95/5 internal split as
+the baseline critic. The effective batch size is 128 (four BF16 microbatches of 32).
+
+Wrapper: `scripts/train_safe_genimage.sh`
+
+Entry point: `tools/train_safe_genimage.py`
+Default config: `configs/experiments/safe_sd14_genimage.yaml`
+
+```bash
+bash scripts/train_safe_genimage.sh
+```
+
+Resume from the last completed epoch:
+
+```bash
+bash scripts/train_safe_genimage.sh \
+  --resume outputs/safe_sd14_genimage/latest.pt
+```
+
 ## 3. Evaluate a ResNet-50 critic
 
 ### Evaluate one official GenImage validation split
@@ -611,6 +634,7 @@ PYTHONPATH=src .venv/bin/python -u tools/visualize_prompt.py \
 | File | Role |
 |---|---|
 | `scripts/train.sh` | Shell wrapper for baseline critic training |
+| `scripts/train_safe_genimage.sh` | Shell wrapper for SAFE training on GenImage SD1.4 |
 | `scripts/evaluate.sh` | Shell wrapper for one official validation split |
 | `scripts/evaluate_genimage.sh` | Shell wrapper for all unseen GenImage generators |
 | `scripts/evaluate_reconstruction_shift.sh` | Shell wrapper for frozen-critic real reconstruction shift measurement |
@@ -619,6 +643,7 @@ PYTHONPATH=src .venv/bin/python -u tools/visualize_prompt.py \
 | `scripts/finetune_probe.sh` | Shell wrapper for PROBE-style critic fine-tuning |
 | `scripts/train_prompt.sh` | Shell wrapper for soft-prompt auditing/training |
 | `tools/train_critic.py` | Baseline critic trainer |
+| `tools/train_safe_genimage.py` | SAFE trainer for a deterministic GenImage SD1.4 split |
 | `tools/evaluate_critic.py` | Single-split critic evaluator |
 | `tools/evaluate_genimage.py` | Multi-generator GenImage evaluator |
 | `tools/evaluate_reconstruction_shift.py` | Matched unguided/real-guided reconstruction evaluator |

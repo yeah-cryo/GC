@@ -1,0 +1,16 @@
+data_root: /mnt/f/datasets/GenImage/stable_diffusion_v_1_4/imagenet_ai_0419_sdv4
+output: outputs/safe_sd14_genimage
+seed: 42
+validation_fraction: 0.05
+expected_per_class: 162000
+input_size: 256
+epochs: 20
+warmup_epochs: 1
+global_batch_size: 128
+micro_batch_size: 32
+validation_batch_size: 128
+workers: 8
+learning_rate: 0.005
+min_learning_rate: 0.000001
+weight_decay: 0.01
+print_frequency: 50
