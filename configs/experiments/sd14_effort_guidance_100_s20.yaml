@@ -1,0 +1,16 @@
+model_path: /mnt/e/repos/stable-diffusion-v1-4
+critic_type: effort_clip_l14
+critic_checkpoint: /mnt/e/repos/Effort-AIGI-Detection/effort_clip_L14_trainOn_sdv14.pth
+snapshot_critic: false
+critic_image_size: 224
+output: outputs/sd14_effort_guidance_100_s20
+prompt: a realistic photo
+resolution: 512
+ddim_steps: 35
+cfg_scale: 7.5
+precision: bf16
+max_guidance_timestep: 200
+gradient_rms_clip: 0.1
+strengths: [20.0]
+seed_start: 22001
+num_images: 100

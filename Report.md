@@ -116,13 +116,14 @@ Ordinary-data fine-tuning substantially increased sensitivity to the guided samp
 
 ## Cross-Detector Classifier-Guidance Comparison
 
-These three runs use the same SD 1.4 prompt, seeds 22001–22100, guidance strength 20, and eight low-noise guidance steps. Each generated set is evaluated by the detector that guided it, using probabilities recomputed from the saved PNG files.
+These runs use the same SD 1.4 prompt, seeds 22001–22100, guidance strength 20, and eight low-noise guidance steps. Each generated set is evaluated by the detector that guided it, using probabilities recomputed from the saved PNG files.
 
-| Guidance classifier | Mean fake probability |
-|---|---:|
-| SimLBR | **6.57%** |
-| PROBE DINOv2 | **9.89%** |
-| NPR | **18.66%** |
+| Guidance classifier | Mean fake probability | Median fake probability | Classified as real |
+|---|---:|---:|---:|
+| SimLBR | **6.57%** | 5.22% | 99/100 (99%) |
+| PROBE DINOv2 | **9.89%** | 2.96% | 95/100 (95%) |
+| EFFORT | **10.42%** | 9.27% | 100/100 (100%) |
+| NPR | **18.66%** | 0.0012% | 82/100 (82%) |
 
 ## PROBE DINOv2 Classifier-Guidance Results
 
@@ -168,6 +169,21 @@ Saved-PNG fake probability ranged from approximately zero to 100%, with a 90th p
 - [Complete 100-image grid](outputs/sd14_npr_guidance_100_s20/strength_20.png)
 - [Per-image metrics](outputs/sd14_npr_guidance_100_s20/metrics.jsonl)
 - [Experiment summary](outputs/sd14_npr_guidance_100_s20/summary.json)
+
+## EFFORT Classifier-Guidance Results
+
+We repeated the experiment with EFFORT's released CLIP ViT-L/14 checkpoint trained on GenImage SD 1.4. Its rank-one residual attention factors were merged with the fixed main weights before inference; this is algebraically identical to EFFORT's forward computation and avoids reconstructing every attention matrix repeatedly. Guidance and scoring used 224×224 bilinear resize, CLIP normalization, and fake class 1.
+
+| Guidance strength | Images | Mean saved-PNG fake probability | Median | Classified as real |
+|---:|---:|---:|---:|---:|
+| 20 | 100 | **10.42%** | 9.27% | **100/100 (100%)** |
+
+Saved-PNG fake probability ranged from 0.16% to 43.16%, with a 90th percentile of 20.31%. PNG saving raised the mean from 9.38% to 10.42% but did not change any classification. Visual inspection again shows malformed text, collage-like compositions, duplicated subjects, and implausible geometry, so the 100% fooling rate does not establish visual realism.
+
+- [First 16 generated samples](outputs/sd14_effort_guidance_100_s20/strength_20_page_01.jpg)
+- [Complete 100-image grid](outputs/sd14_effort_guidance_100_s20/strength_20.png)
+- [Per-image metrics](outputs/sd14_effort_guidance_100_s20/metrics.jsonl)
+- [Experiment summary](outputs/sd14_effort_guidance_100_s20/summary.json)
 
 ## DINOv3 Classifier-Guidance Results
 

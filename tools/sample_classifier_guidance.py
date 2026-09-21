@@ -271,6 +271,31 @@ def main():
                                              for p in critic.parameters())},
                    output / 'critic_audit.json')
         del probe, adapted, gradient
+    elif config.get('critic_type') == 'effort_clip_l14':
+        from aigi_detection.models.backbones.effort_critic import EffortCritic
+        if not isinstance(checkpoint, dict) or 'module.head.weight' not in checkpoint:
+            raise ValueError('Unexpected EFFORT checkpoint structure.')
+        critic = EffortCritic(
+            checkpoint, image_size=config.get('critic_image_size', 224)).cuda()
+        identity.update(
+            architecture='EFFORT CLIP ViT-L/14 with rank-one residual attention and 2-class head',
+            preprocessing='224x224 bilinear resize; CLIP normalization',
+            precision='BF16 autocast for differentiable guidance and scoring',
+            label_mapping={'nature': 0, 'ai': 1},
+            source_repository='/mnt/e/repos/Effort-AIGI-Detection')
+        probe = torch.rand(1, 3, config['resolution'], config['resolution'],
+                           device='cuda', requires_grad=True)
+        adapted = critic.score_images(probe)
+        gradient = torch.autograd.grad(adapted.sum(), probe)[0]
+        if not torch.isfinite(gradient).all() or gradient.norm() <= 0:
+            raise RuntimeError('EFFORT critic did not provide a finite image gradient.')
+        write_json({'input_gradient_norm': gradient.norm().item(),
+                    'output_shape': list(adapted.shape),
+                    'parameters_frozen': all(not p.requires_grad and p.grad is None
+                                             for p in critic.parameters()),
+                    'effective_attention_weights_merged': True},
+                   output / 'critic_audit.json')
+        del probe, adapted, gradient
     else:
         if checkpoint['label_mapping'] != {'nature': 0, 'ai': 1}:
             raise ValueError('Expected fake=1, real=0 critic.')
