@@ -1,0 +1,16 @@
+model_path: /mnt/e/repos/stable-diffusion-v1-4
+critic_type: safe_wavelet_resnet50
+critic_checkpoint: outputs/safe_sd14_genimage/best.pt
+snapshot_critic: false
+critic_crop_size: 256
+output: outputs/sd14_safe_genimage_guidance_100_s20
+prompt: a realistic photo
+resolution: 512
+ddim_steps: 35
+cfg_scale: 7.5
+precision: bf16
+max_guidance_timestep: 200
+gradient_rms_clip: 0.1
+strengths: [20.0]
+seed_start: 22001
+num_images: 100

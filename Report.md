@@ -126,7 +126,8 @@ These runs use the same SD 1.4 prompt, seeds 22001–22100, guidance strength 20
 | EFFORT | **10.42%** | 9.27% | 100/100 (100%) |
 | NPR | **18.66%** | 0.0012% | 82/100 (82%) |
 | FreqNet | **43.71%** | 25.84% | 58/100 (58%) |
-| SAFE | **85.44%** | 89.04% | 4/100 (4%) |
+| SAFE (released) | **85.44%** | 89.04% | 4/100 (4%) |
+| SAFE (GenImage SD1.4-trained) | **91.14%** | 93.61% | 0/100 (0%) |
 
 ## PROBE DINOv2 Classifier-Guidance Results
 
@@ -205,6 +206,29 @@ Without guidance, SAFE classified all 100 matched SD 1.4 images as fake; probabi
 - [Complete 100-image grid](outputs/sd14_safe_guidance_100_s20/strength_20.png)
 - [Per-image metrics](outputs/sd14_safe_guidance_100_s20/metrics.jsonl)
 - [Experiment summary](outputs/sd14_safe_guidance_100_s20/summary.json)
+
+### GenImage SD1.4-trained SAFE checkpoint
+
+We repeated the strength-20 run with the SAFE checkpoint trained from scratch on the
+GenImage SD1.4 training split. The prompt, seeds, SD sampler, eight low-noise guidance
+steps, preprocessing, and saved-PNG rescoring were identical to the released-checkpoint
+experiment. This is an in-distribution robustness test because both the critic's fake
+training class and the guided generator are SD1.4.
+
+| Guidance strength | Images | Mean saved-PNG fake probability | Median | Classified as real |
+|---:|---:|---:|---:|---:|
+| 20 | 100 | **91.14%** | 93.61% | **0/100 (0%)** |
+
+Before PNG quantization, the mean fake probability was 87.10%, the median was 93.02%,
+and 6/100 images crossed into the real class. After saving and rescoring, probabilities
+ranged from 54.65% to 95.71%, so every sample remained on the fake side. Compared with
+the released SAFE checkpoint, the SD1.4-trained checkpoint had a 5.70-point higher mean
+saved-PNG fake probability and four fewer successful evasions under identical guidance.
+
+- [First 16 generated samples](outputs/sd14_safe_genimage_guidance_100_s20/strength_20_page_01.jpg)
+- [Complete 100-image grid](outputs/sd14_safe_genimage_guidance_100_s20/strength_20.png)
+- [Per-image metrics](outputs/sd14_safe_genimage_guidance_100_s20/metrics.jsonl)
+- [Experiment summary](outputs/sd14_safe_genimage_guidance_100_s20/summary.json)
 
 ## SPAI Classifier-Guidance Results
 

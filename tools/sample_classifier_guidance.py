@@ -298,7 +298,7 @@ def main():
         del probe, adapted, gradient
     elif config.get('critic_type') == 'safe_wavelet_resnet50':
         from aigi_detection.models.backbones.safe_critic import SAFECritic
-        if not isinstance(checkpoint, dict) or set(checkpoint) != {'model'}:
+        if not isinstance(checkpoint, dict) or 'model' not in checkpoint:
             raise ValueError('Unexpected SAFE checkpoint structure.')
         critic = SAFECritic(
             checkpoint, crop_size=config.get('critic_crop_size', 256)).cuda()

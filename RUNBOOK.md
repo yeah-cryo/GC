@@ -209,6 +209,13 @@ PYTHONPATH=src .venv/bin/python -u tools/sample_classifier_guidance.py \
   --config configs/experiments/sd14_safe_guidance_100_s20.yaml
 ```
 
+The same run using the SAFE checkpoint trained on GenImage SD1.4:
+
+```bash
+PYTHONPATH=src .venv/bin/python -u tools/sample_classifier_guidance.py \
+  --config configs/experiments/sd14_safe_genimage_guidance_100_s20.yaml
+```
+
 SPAI spectral ViT classifier guidance with the same 100 seeds and strength 20:
 
 ```bash
@@ -255,6 +262,7 @@ Available configurations:
 | `sd14_effort_guidance_100_s20.yaml` | EFFORT CLIP ViT-L/14 critic, fixed prompt, 100 images at strength 20 | `outputs/sd14_effort_guidance_100_s20/` |
 | `sd14_safe_guidance_100_s20.yaml` | SAFE wavelet-ResNet critic, fixed prompt, 100 images at strength 20 | `outputs/sd14_safe_guidance_100_s20/` |
 | `sd14_safe_guidance_100_s0.yaml` | Matched unguided SAFE ablation with the same prompt and 100 seeds | `outputs/sd14_safe_guidance_100_s0/` |
+| `sd14_safe_genimage_guidance_100_s20.yaml` | GenImage SD1.4-trained SAFE critic, fixed prompt, 100 images at strength 20 | `outputs/sd14_safe_genimage_guidance_100_s20/` |
 | `sd14_spai_guidance_100_s20.yaml` | SPAI spectral ViT critic, fixed prompt, 100 images at strength 20 | `outputs/sd14_spai_guidance_100_s20/` |
 | `sd14_freqnet_guidance_100_s20.yaml` | FreqNet frequency-aware critic, fixed prompt, 100 images at strength 20 | `outputs/sd14_freqnet_guidance_100_s20/` |
 | `sd14_resnet50_guidance_coco20k.yaml` | ResNet-50-guided hard set from 20,000 COCO captions, strength 20 | `outputs/sd14_resnet50_guidance_coco20k/` |
