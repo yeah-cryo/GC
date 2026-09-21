@@ -125,6 +125,7 @@ These runs use the same SD 1.4 prompt, seeds 22001–22100, guidance strength 20
 | PROBE DINOv2 | **9.89%** | 2.96% | 95/100 (95%) |
 | EFFORT | **10.42%** | 9.27% | 100/100 (100%) |
 | NPR | **18.66%** | 0.0012% | 82/100 (82%) |
+| FreqNet | **43.71%** | 25.84% | 58/100 (58%) |
 | SAFE | **85.44%** | 89.04% | 4/100 (4%) |
 
 ## PROBE DINOv2 Classifier-Guidance Results
@@ -220,6 +221,22 @@ Saved-PNG fake probability ranged from 0% to 75.92%, with a 90th percentile of 1
 - [Per-image metrics](outputs/sd14_spai_guidance_100_s20/metrics.jsonl)
 - [Experiment summary](outputs/sd14_spai_guidance_100_s20/summary.json)
 - [Critic gradient audit](outputs/sd14_spai_guidance_100_s20/critic_audit.json)
+
+## FreqNet Classifier-Guidance Results
+
+We repeated the experiment with FreqNet's released `4-classes-freqnet-v2.pth` checkpoint, which was trained on four GAN image classes. FreqNet applies learned spatial and channel frequency filtering before a truncated ResNet and one-logit binary head. Guidance and saved-PNG scoring followed the repository's GANGen inference path: native 512×512 resolution, no crop or resize, ImageNet normalization, and positive logits for fake. The checkpoint is included in the FreqNet repository, so no additional weight was required.
+
+| Guidance strength | Images | Mean saved-PNG fake probability | Median | Classified as real |
+|---:|---:|---:|---:|---:|
+| 20 | 100 | **43.71%** | 25.84% | **58/100 (58%)** |
+
+Saved-PNG probabilities ranged from approximately zero to 100%, and the 90th percentile was 99.999%. Before saving, the mean was 32.96% and 70/100 images were classified as real. PNG quantization therefore increased the mean by 10.75 percentage points and moved 12 images back to the fake side, consistent with FreqNet's direct reliance on frequency-domain evidence. Visual inspection shows the same malformed text, collage-like scenes, duplicated subjects, and implausible geometry seen in the other guided runs. Under these settings FreqNet is more resistant than SPAI, SimLBR, PROBE, EFFORT, and NPR, while remaining substantially easier to fool than SAFE.
+
+- [First 16 generated samples](outputs/sd14_freqnet_guidance_100_s20/strength_20_page_01.jpg)
+- [Complete 100-image grid](outputs/sd14_freqnet_guidance_100_s20/strength_20.png)
+- [Per-image metrics](outputs/sd14_freqnet_guidance_100_s20/metrics.jsonl)
+- [Experiment summary](outputs/sd14_freqnet_guidance_100_s20/summary.json)
+- [Critic gradient audit](outputs/sd14_freqnet_guidance_100_s20/critic_audit.json)
 
 ## DINOv3 Classifier-Guidance Results
 

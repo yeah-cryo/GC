@@ -350,6 +350,31 @@ def main():
                     'native_spai_no_grad_guard_disabled_for_input_gradient': True},
                    output / 'critic_audit.json')
         del probe, adapted, gradient
+    elif config.get('critic_type') == 'freqnet':
+        from aigi_detection.models.backbones.freqnet_critic import FreqNetCritic
+        if not isinstance(checkpoint, dict) or 'fc1.weight' not in checkpoint:
+            raise ValueError('Unexpected FreqNet checkpoint structure.')
+        critic = FreqNetCritic(config['freqnet_repository'], checkpoint).cuda()
+        identity.update(
+            architecture='FreqNet frequency-aware truncated ResNet with one-logit head',
+            preprocessing='native 512x512 resolution; ImageNet normalization; learned spatial/channel frequency filtering',
+            precision='BF16 SD generation; FP32 FreqNet guidance and scoring',
+            label_mapping={'nature': 0, 'ai': 1},
+            source_repository=config['freqnet_repository'])
+        probe = torch.rand(1, 3, config['resolution'], config['resolution'],
+                           device='cuda', requires_grad=True)
+        adapted = critic.score_images(probe)
+        gradient = torch.autograd.grad(adapted.sum(), probe)[0]
+        if not torch.isfinite(gradient).all() or gradient.norm() <= 0:
+            raise RuntimeError('FreqNet critic did not provide a finite image gradient.')
+        write_json({'input_gradient_norm': gradient.norm().item(),
+                    'output_shape': list(adapted.shape),
+                    'strict_checkpoint_load': True,
+                    'checkpoint_parameter_count': sum(value.numel() for value in checkpoint.values()),
+                    'parameters_frozen': all(not p.requires_grad and p.grad is None
+                                             for p in critic.parameters())},
+                   output / 'critic_audit.json')
+        del probe, adapted, gradient
     else:
         if checkpoint['label_mapping'] != {'nature': 0, 'ai': 1}:
             raise ValueError('Expected fake=1, real=0 critic.')

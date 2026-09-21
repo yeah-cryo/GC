@@ -1,0 +1,16 @@
+model_path: /mnt/e/repos/stable-diffusion-v1-4
+critic_type: freqnet
+critic_checkpoint: /mnt/e/repos/FreqNet-DeepfakeDetection/4-classes-freqnet-v2.pth
+snapshot_critic: false
+freqnet_repository: /mnt/e/repos/FreqNet-DeepfakeDetection
+output: outputs/sd14_freqnet_guidance_100_s20
+prompt: a realistic photo
+resolution: 512
+ddim_steps: 35
+cfg_scale: 7.5
+precision: bf16
+max_guidance_timestep: 200
+gradient_rms_clip: 0.1
+strengths: [20.0]
+seed_start: 22001
+num_images: 100
