@@ -114,6 +114,16 @@ Ordinary-data fine-tuning substantially increased sensitivity to the guided samp
 - [Fine-tuned critic hard-sample evaluation](outputs/resnet50_critic_probe_guided_s20/hard_sample_evaluation/summary.json)
 - [Unguided-data control hard-sample evaluation](outputs/resnet50_critic_unguided_sd14_control/hard_sample_evaluation/summary.json)
 
+## Cross-Detector Classifier-Guidance Comparison
+
+These three runs use the same SD 1.4 prompt, seeds 22001–22100, guidance strength 20, and eight low-noise guidance steps. Each generated set is evaluated by the detector that guided it, using probabilities recomputed from the saved PNG files.
+
+| Guidance classifier | Mean fake probability |
+|---|---:|
+| SimLBR | **6.57%** |
+| PROBE DINOv2 | **9.89%** |
+| NPR | **18.66%** |
+
 ## PROBE DINOv2 Classifier-Guidance Results
 
 We generated 100 SD 1.4 images with the fixed prompt “a realistic photo,” seeds 22001–22100, and classifier-guidance strength 20. The classifier was PROBE's released fully fine-tuned DINOv2-L/14-with-registers checkpoint with its linear head. Guidance and saved-PNG scoring used the repository's ImageNet normalization and 336×336 non-overlapping crop protocol. Guidance targeted the real class during the final eight low-noise DDIM steps.
