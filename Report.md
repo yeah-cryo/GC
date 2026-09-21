@@ -192,10 +192,13 @@ We repeated the experiment using SAFE's released checkpoint. SAFE extracts the d
 
 | Guidance strength | Images | Mean saved-PNG fake probability | Median | Classified as real |
 |---:|---:|---:|---:|---:|
+| 0 | 100 | 95.74% | 96.16% | 0/100 (0%) |
 | 20 | 100 | **85.44%** | 89.04% | **4/100 (4%)** |
 
-Saved-PNG fake probability ranged from 16.15% to 96.46%, with a 90th percentile of 93.10%. Before PNG quantization, the mean was 78.37% and 9/100 images were classified as real. Thus the same strength-20, eight-step guidance that fooled the feature-based detectors was mostly ineffective against SAFE. The generated images still contain the malformed text, collage-like structure, duplicated subjects, and implausible geometry seen in the other runs.
+Without guidance, SAFE classified all 100 matched SD 1.4 images as fake; probabilities ranged from 91.21% to 98.34%. Strength 20 reduced the saved-PNG fake probability for every seed, by 10.31 percentage points on average and 7.08 points at the median, but crossed the decision boundary for only four images. The mean saved-image RMSE between the matched strength-0 and strength-20 sets was 0.03183 in the 0–1 RGB domain. Before PNG quantization, the strength-20 mean was 78.37% and 9/100 images were classified as real. Therefore SAFE's result reflects both a very large initial classification margin and limited progress from the eight late guidance steps. The generated images still contain the malformed text, collage-like structure, duplicated subjects, and implausible geometry seen in the other runs.
 
+- [Unguided experiment summary](outputs/sd14_safe_guidance_100_s0/summary.json)
+- [Unguided per-image metrics](outputs/sd14_safe_guidance_100_s0/metrics.jsonl)
 - [First 16 generated samples](outputs/sd14_safe_guidance_100_s20/strength_20_page_01.jpg)
 - [Complete 100-image grid](outputs/sd14_safe_guidance_100_s20/strength_20.png)
 - [Per-image metrics](outputs/sd14_safe_guidance_100_s20/metrics.jsonl)
