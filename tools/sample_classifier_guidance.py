@@ -320,6 +320,36 @@ def main():
                                              for p in critic.parameters())},
                    output / 'critic_audit.json')
         del probe, adapted, gradient
+    elif config.get('critic_type') == 'spai_spectral_vit':
+        from aigi_detection.models.backbones.spai_critic import SPAICritic
+        if not isinstance(checkpoint, dict) or 'model' not in checkpoint:
+            raise ValueError('Unexpected SPAI checkpoint structure.')
+        critic = SPAICritic(
+            config['spai_repository'], checkpoint,
+            config.get('spai_config')).cuda()
+        identity.update(
+            architecture='SPAI MFM ViT-B/16 spectral restoration detector with patch attention',
+            preprocessing='native-resolution non-overlapping 224x224 patches; FFT low/high-frequency decomposition; ImageNet normalization inside SPAI',
+            precision='BF16 autocast for differentiable guidance and scoring',
+            label_mapping={'nature': 0, 'ai': 1},
+            source_repository=config['spai_repository'],
+            source_config=config.get('spai_config',
+                                     str(Path(config['spai_repository']) / 'configs' / 'spai.yaml')))
+        probe = torch.rand(1, 3, config['resolution'], config['resolution'],
+                           device='cuda', requires_grad=True)
+        adapted = critic.score_images(probe)
+        gradient = torch.autograd.grad(adapted.sum(), probe)[0]
+        if not torch.isfinite(gradient).all() or gradient.norm() <= 0:
+            raise RuntimeError('SPAI critic did not provide a finite image gradient.')
+        write_json({'input_gradient_norm': gradient.norm().item(),
+                    'output_shape': list(adapted.shape),
+                    'strict_checkpoint_load': True,
+                    'checkpoint_parameter_count': sum(value.numel() for value in checkpoint['model'].values()),
+                    'parameters_frozen': all(not p.requires_grad and p.grad is None
+                                             for p in critic.parameters()),
+                    'native_spai_no_grad_guard_disabled_for_input_gradient': True},
+                   output / 'critic_audit.json')
+        del probe, adapted, gradient
     else:
         if checkpoint['label_mapping'] != {'nature': 0, 'ai': 1}:
             raise ValueError('Expected fake=1, real=0 critic.')

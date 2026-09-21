@@ -120,6 +120,7 @@ These runs use the same SD 1.4 prompt, seeds 22001–22100, guidance strength 20
 
 | Guidance classifier | Mean fake probability | Median fake probability | Classified as real |
 |---|---:|---:|---:|
+| SPAI | **5.58%** | 0.0315% | 98/100 (98%) |
 | SimLBR | **6.57%** | 5.22% | 99/100 (99%) |
 | PROBE DINOv2 | **9.89%** | 2.96% | 95/100 (95%) |
 | EFFORT | **10.42%** | 9.27% | 100/100 (100%) |
@@ -203,6 +204,22 @@ Without guidance, SAFE classified all 100 matched SD 1.4 images as fake; probabi
 - [Complete 100-image grid](outputs/sd14_safe_guidance_100_s20/strength_20.png)
 - [Per-image metrics](outputs/sd14_safe_guidance_100_s20/metrics.jsonl)
 - [Experiment summary](outputs/sd14_safe_guidance_100_s20/summary.json)
+
+## SPAI Classifier-Guidance Results
+
+We repeated the fixed-prompt experiment with SPAI's released spectral ViT checkpoint. SPAI splits each native-resolution image into non-overlapping 224×224 patches, decomposes each patch into low- and high-frequency components, and classifies spectral reconstruction features with learned patch attention. The supplied `spai.pth` contained the complete 139,945,243-parameter model, so no separate MFM pretraining weight was required. Guidance and scoring used SPAI's official internal ImageNet normalization and fake class 1.
+
+| Guidance strength | Images | Mean saved-PNG fake probability | Median | Classified as real |
+|---:|---:|---:|---:|---:|
+| 20 | 100 | **5.58%** | 0.0315% | **98/100 (98%)** |
+
+Saved-PNG fake probability ranged from 0% to 75.92%, with a 90th percentile of 17.91%. Only seeds 22059 and 22097 remained on the fake side. The distribution was strongly right-skewed: half the samples scored at or below 0.0315%, while a few high-probability samples raised the mean. Visual inspection shows pronounced collage-like compositions, garbled text, duplicated subjects, and implausible geometry. The high fooling rate therefore demonstrates a weakness in SPAI's decision function under direct gradient guidance; it does not show that the samples are consistently realistic.
+
+- [First 16 generated samples](outputs/sd14_spai_guidance_100_s20/strength_20_page_01.jpg)
+- [Complete 100-image grid](outputs/sd14_spai_guidance_100_s20/strength_20.png)
+- [Per-image metrics](outputs/sd14_spai_guidance_100_s20/metrics.jsonl)
+- [Experiment summary](outputs/sd14_spai_guidance_100_s20/summary.json)
+- [Critic gradient audit](outputs/sd14_spai_guidance_100_s20/critic_audit.json)
 
 ## DINOv3 Classifier-Guidance Results
 
